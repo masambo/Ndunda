@@ -26,7 +26,17 @@
 </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="min-height:100vh;display:grid;place-items:center;padding:24px;font-family:Inter,Arial,sans-serif;background:#f8faf9;color:#102018;">
+        <div style="max-width:420px;text-align:center;">
+          <img src="/Ndunda_logo.png" alt="Ndunda" style="height:56px;width:auto;margin-bottom:18px;" />
+          <h1 style="font-size:22px;margin:0 0 8px;">Loading Ndunda</h1>
+          <p style="font-size:14px;line-height:1.5;margin:0;color:#52645a;">
+            If this message stays here, the app bundle did not start. Refresh once, then check the deployment environment variables.
+          </p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
