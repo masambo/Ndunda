@@ -92,6 +92,8 @@ In Vercel, set these environment variables:
 - `VITE_CLERK_PUBLISHABLE_KEY` - production Clerk publishable key
 - `VITE_GOOGLE_MAPS_API_KEY` - optional, enables Street View
 
+If you deploy Convex separately instead of from Vercel, set `VITE_CONVEX_URL` to the production Convex URL. The recommended setup is still `CONVEX_DEPLOY_KEY`, because it keeps frontend and backend deploys together.
+
 Set these on the Convex production deployment:
 
 ```sh
