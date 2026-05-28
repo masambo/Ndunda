@@ -3,19 +3,15 @@ import { ClerkProvider, useAuth } from "@clerk/react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 
-const convexUrl = import.meta.env.VITE_CONVEX_URL;
-if (!convexUrl) {
-  throw new Error("Missing VITE_CONVEX_URL. Run npx convex dev to configure.");
-}
+const DEFAULT_CONVEX_URL = "https://fortunate-gull-846.eu-west-1.convex.cloud";
+const DEFAULT_CLERK_PUBLISHABLE_KEY =
+  "pk_test_YWRhcHRlZC1sYWR5YnVnLTI5LmNsZXJrLmFjY291bnRzLmRldiQ";
+
+const convexUrl = import.meta.env.VITE_CONVEX_URL || DEFAULT_CONVEX_URL;
+const publishableKey =
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || DEFAULT_CLERK_PUBLISHABLE_KEY;
 
 const convex = new ConvexReactClient(convexUrl);
-
-const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-if (!publishableKey) {
-  throw new Error(
-    "Missing VITE_CLERK_PUBLISHABLE_KEY. Add it to .env.local from the Clerk dashboard.",
-  );
-}
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return (
