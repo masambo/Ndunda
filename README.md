@@ -80,19 +80,17 @@ This project is built with:
 
 ### Vercel
 
-This repo includes `vercel.json` for Vite SPA routing and a Vercel build command that deploys Convex before building the frontend:
+This repo includes `vercel.json` for Vite SPA routing. Vercel should use the standard Vite build:
 
 ```sh
-npm run build:vercel
+npm run build
 ```
 
 In Vercel, set these environment variables:
 
-- `CONVEX_DEPLOY_KEY` - production deploy key from the Convex dashboard
+- `VITE_CONVEX_URL` - production Convex URL
 - `VITE_CLERK_PUBLISHABLE_KEY` - production Clerk publishable key
 - `VITE_GOOGLE_MAPS_API_KEY` - optional, enables Street View
-
-If you deploy Convex separately instead of from Vercel, set `VITE_CONVEX_URL` to the production Convex URL. The recommended setup is still `CONVEX_DEPLOY_KEY`, because it keeps frontend and backend deploys together.
 
 Set these on the Convex production deployment:
 
@@ -105,7 +103,7 @@ Vercel settings:
 
 - Framework preset: Vite
 - Install command: `npm install`
-- Build command: `npm run build:vercel`
+- Build command: `npm run build`
 - Output directory: `dist`
 
 For Clerk production auth, add your production domain in Clerk. Convex notes that Clerk does not support the default `https://<site-name>.vercel.app` domain for production auth, so use a custom domain for the live site.
