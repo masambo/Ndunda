@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -13,75 +13,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-import property1 from "@/assets/property-1.jpg";
-import property2 from "@/assets/property-2.jpg";
-import property3 from "@/assets/property-3.jpg";
-import property4 from "@/assets/property-4.jpg";
-
-// Property data with coordinates (Windhoek, Namibia approximate coordinates)
-const allProperties = [
-  {
-    id: "1",
-    title: "Modern 2BR Apartment",
-    location: "Kleine Kuppe, Windhoek",
-    price: 12500,
-    image: property1,
-    bedrooms: 2,
-    bathrooms: 1,
-    size: 75,
-    type: "apartment" as const,
-    isNew: true,
-    // Kleine Kuppe coordinates
-    latitude: -22.5609,
-    longitude: 17.0658,
-  },
-  {
-    id: "2",
-    title: "Cozy Student Room",
-    location: "Pioneerspark, Windhoek",
-    price: 3500,
-    image: property2,
-    bedrooms: 1,
-    bathrooms: 1,
-    size: 18,
-    type: "room" as const,
-    isNew: false,
-    // Pioneerspark coordinates
-    latitude: -22.5714,
-    longitude: 17.0836,
-  },
-  {
-    id: "3",
-    title: "Spacious Family House",
-    location: "Olympia, Windhoek",
-    price: 25000,
-    image: property3,
-    bedrooms: 4,
-    bathrooms: 2,
-    size: 180,
-    type: "house" as const,
-    isNew: true,
-    // Olympia coordinates
-    latitude: -22.5556,
-    longitude: 17.0722,
-  },
-  {
-    id: "4",
-    title: "Bachelor Flat",
-    location: "Eros, Windhoek",
-    price: 5500,
-    image: property4,
-    bedrooms: 1,
-    bathrooms: 1,
-    size: 35,
-    type: "apartment" as const,
-    isNew: false,
-    // Eros coordinates
-    latitude: -22.5681,
-    longitude: 17.0814,
-  },
-];
+import { useProperties } from "@/hooks/useProperties";
+import type { Property } from "@/types/property";
 
 // Haversine formula to calculate distance between two coordinates in kilometers
 const calculateDistance = (
@@ -108,13 +41,42 @@ interface UserLocation {
   longitude: number;
 }
 
+const toCardProperty = (property: Property) => ({
+  id: property.id,
+  title: property.title,
+  location: property.location,
+  price: property.price,
+  image: property.images[0] || "/placeholder.svg",
+  images: property.images,
+  ownerName: property.owner_name || property.owner_email,
+  ownerAvatarUrl: property.owner_avatar_url,
+  ownerRole: property.owner_role,
+  bedrooms: property.bedrooms,
+  bathrooms: property.bathrooms,
+  size: property.size || 0,
+  type: property.type,
+  isNew: property.is_new,
+  listingMode: property.listing_mode,
+  rentalType: property.rental_type,
+  pricingModel: property.rental_type === "short-term"
+    ? {
+        daily: property.daily_price ?? undefined,
+        weekly: property.weekly_price ?? undefined,
+        monthly: property.monthly_price ?? undefined,
+      }
+    : undefined,
+  latitude: property.latitude,
+  longitude: property.longitude,
+});
+
 interface PropertyWithDistance {
-  property: typeof allProperties[0];
+  property: ReturnType<typeof toCardProperty>;
   distance: number;
 }
 
 const NearbyScan = () => {
   const navigate = useNavigate();
+  const { properties } = useProperties({ status: "active", limit: 60 });
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -168,14 +130,16 @@ const NearbyScan = () => {
     );
   };
 
-  const findNearbyProperties = (location: UserLocation) => {
-    const propertiesWithDistance: PropertyWithDistance[] = allProperties
+  const findNearbyProperties = useCallback((location: UserLocation) => {
+    const propertiesWithDistance: PropertyWithDistance[] = properties
+      .map(toCardProperty)
+      .filter((property) => property.latitude !== null && property.longitude !== null)
       .map((property) => {
         const distance = calculateDistance(
           location.latitude,
           location.longitude,
-          property.latitude,
-          property.longitude
+          property.latitude!,
+          property.longitude!
         );
         return {
           property,
@@ -186,13 +150,13 @@ const NearbyScan = () => {
       .sort((a, b) => a.distance - b.distance);
 
     setNearbyProperties(propertiesWithDistance);
-  };
+  }, [maxDistance, properties]);
 
   useEffect(() => {
     if (userLocation) {
       findNearbyProperties(userLocation);
     }
-  }, [maxDistance]);
+  }, [findNearbyProperties, userLocation]);
 
   const formatDistance = (distance: number): string => {
     if (distance < 1) {
@@ -211,7 +175,7 @@ const NearbyScan = () => {
               <Navigation className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Scan Nearby</h1>
+              <h1 className="text-xl md:text-2xl font-semibold text-foreground">Scan Nearby</h1>
               <p className="text-sm md:text-base text-muted-foreground">
                 Find properties near your location
               </p>

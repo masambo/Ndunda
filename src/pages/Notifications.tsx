@@ -1,17 +1,9 @@
 import AppLayout from "@/components/layout/AppLayout";
-import { ArrowLeft, Bell, Home, MessageCircle, BadgeCheck, Heart } from "lucide-react";
+import { ArrowLeft, Bell, Home, BadgeCheck, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const notifications = [
-  {
-    id: "1",
-    type: "message",
-    title: "New message from Sarah",
-    description: "Is the apartment still available?",
-    time: "2 minutes ago",
-    read: false,
-  },
   {
     id: "2",
     type: "listing",
@@ -40,8 +32,6 @@ const notifications = [
 
 const getIcon = (type: string) => {
   switch (type) {
-    case "message":
-      return MessageCircle;
     case "listing":
       return Home;
     case "saved":
@@ -55,8 +45,6 @@ const getIcon = (type: string) => {
 
 const getIconColor = (type: string) => {
   switch (type) {
-    case "message":
-      return "bg-info/10 text-info";
     case "listing":
       return "bg-primary/10 text-primary";
     case "saved":

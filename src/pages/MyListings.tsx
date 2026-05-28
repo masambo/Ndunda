@@ -4,42 +4,47 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import PropertyCard from "@/components/home/PropertyCard";
-
-import property3 from "@/assets/property-3.jpg";
-import property4 from "@/assets/property-4.jpg";
-
-const myListings = [
-  {
-    id: "1",
-    title: "Spacious Family House",
-    location: "Olympia, Windhoek",
-    price: 25000,
-    image: property3,
-    bedrooms: 4,
-    bathrooms: 2,
-    size: 180,
-    type: "house" as const,
-    status: "active",
-    views: 124,
-    rentalType: "long-term" as const,
-  },
-  {
-    id: "2",
-    title: "Bachelor Flat",
-    location: "Eros, Windhoek",
-    price: 5500,
-    image: property4,
-    bedrooms: 1,
-    bathrooms: 1,
-    size: 35,
-    type: "apartment" as const,
-    status: "pending",
-    views: 0,
-    rentalType: "long-term" as const,
-  },
-];
+import { useMemo, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 const MyListings = () => {
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const convexListings = useQuery(api.properties.mine);
+  const removeProperty = useMutation(api.properties.remove);
+  const syncedListings = useMemo(
+    () =>
+      (convexListings ?? []).map((property) => ({
+        id: property._id,
+        title: property.title,
+        location: property.location,
+        price: property.price,
+        image: property.images[0] || "/placeholder.svg",
+        images: property.images,
+        ownerName: property.owner?.fullName || property.owner?.email || null,
+        ownerAvatarUrl: property.owner?.avatarUrl || null,
+        ownerRole: property.owner?.role || null,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        size: property.size || 0,
+        type: property.type,
+        status: property.status,
+        views: property.views ?? 0,
+        rentalType: property.rentalType,
+        listingMode: property.listingMode,
+        isSynced: true,
+      })),
+    [convexListings],
+  );
+  const myListings = syncedListings
+    .filter((listing) => !deletedIds.includes(listing.id));
+
+  const handleDelete = async (id: string) => {
+    await removeProperty({ id: id as Id<"properties"> });
+    setDeletedIds((prev) => [...prev, id]);
+  };
+
   return (
     <AppLayout>
       <div className="px-4 pt-4 pb-6 md:px-0 md:pt-8 md:pb-8">
@@ -54,7 +59,7 @@ const MyListings = () => {
               <Home className="w-6 h-6 md:w-8 md:h-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground">My Listings</h1>
+              <h1 className="text-xl md:text-2xl font-semibold text-foreground">My Listings</h1>
               <p className="text-sm md:text-base text-muted-foreground">{myListings.length} properties</p>
             </div>
           </div>
@@ -86,11 +91,16 @@ const MyListings = () => {
                   location={listing.location}
                   price={listing.price}
                   image={listing.image}
+                  images={listing.images}
+                  ownerName={listing.ownerName}
+                  ownerAvatarUrl={listing.ownerAvatarUrl}
+                  ownerRole={listing.ownerRole}
                   bedrooms={listing.bedrooms}
                   bathrooms={listing.bathrooms}
                   size={listing.size}
                   type={listing.type}
                   rentalType={listing.rentalType}
+                  listingMode={listing.listingMode}
                 />
                 {/* Status Badge */}
                 <div className="absolute top-3 left-3 z-10">
@@ -108,7 +118,10 @@ const MyListings = () => {
                   <button className="p-2 bg-background/90 backdrop-blur-sm rounded-lg shadow-md hover:bg-background transition-colors">
                     <Edit className="w-4 h-4 text-primary" />
                   </button>
-                  <button className="p-2 bg-background/90 backdrop-blur-sm rounded-lg shadow-md hover:bg-background transition-colors">
+                  <button
+                    onClick={() => void handleDelete(listing.id)}
+                    className="p-2 bg-background/90 backdrop-blur-sm rounded-lg shadow-md hover:bg-background transition-colors"
+                  >
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </button>
                 </div>

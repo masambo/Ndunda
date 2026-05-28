@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Carousel,
+  type CarouselApi,
   CarouselContent,
   CarouselItem,
   CarouselNext,
@@ -57,363 +58,32 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import PropertyCard from "@/components/home/PropertyCard";
 import BookingWidget from "@/components/booking/BookingWidget";
+import { useProperty } from "@/hooks/useProperties";
+import { useAuth } from "@clerk/react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 import property1 from "@/assets/property-1.jpg";
-import property2 from "@/assets/property-2.jpg";
-import property3 from "@/assets/property-3.jpg";
-import property4 from "@/assets/property-4.jpg";
 
-// Mock property data - in real app, this would come from an API
-const mockProperties: Record<string, any> = {
-  "1": {
-    id: "1",
-    title: "Modern 2BR Apartment",
-    location: "Kleine Kuppe, Windhoek",
-    fullAddress: "123 Independence Avenue, Kleine Kuppe, Windhoek",
-    latitude: -22.5609,
-    longitude: 17.0658,
-    price: 12500,
-    images: [property1, property2, property3, property4],
-    bedrooms: 2,
-    bathrooms: 1,
-    size: 75,
-    type: "apartment",
-    isNew: true,
-    verified: true,
-    description: `
-      Beautiful modern 2-bedroom apartment located in the heart of Kleine Kuppe, Windhoek. 
-      This spacious unit features an open-plan living area, fully fitted kitchen, and private balcony 
-      with stunning city views. The apartment includes secure parking, 24/7 security, and is within 
-      walking distance to shopping centers, restaurants, and schools. Perfect for professionals or 
-      small families seeking a comfortable and convenient lifestyle.
-      
-      The property comes with modern finishes, tiled floors throughout, and large windows that allow 
-      plenty of natural light. The master bedroom has an en-suite bathroom, and both bedrooms have 
-      built-in wardrobes. The complex features a swimming pool, gym facilities, and landscaped gardens.
-    `,
-    amenities: [
-      { icon: Wifi, label: "WiFi Ready" },
-      { icon: Car, label: "Parking" },
-      { icon: Shield, label: "Security" },
-      { icon: Coffee, label: "Kitchen" },
-      { icon: Home, label: "Furnished" },
-      { icon: Building, label: "Elevator" },
-    ],
-    agent: {
-      id: "1",
-      name: "Sarah M.",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face",
-      phone: "+264 81 123 4567",
-      email: "sarah.m@naminya.com",
-      verified: true,
-      rating: 4.8,
-      listings: 12,
-    },
-    availableFrom: "2026-02-01",
-    deposit: 25000,
-    leaseTerm: "12 months",
-    petsAllowed: false,
-    furnished: true,
-  },
-  "2": {
-    id: "2",
-    title: "Cozy Student Room",
-    location: "Pioneerspark, Windhoek",
-    fullAddress: "456 Main Street, Pioneerspark, Windhoek",
-    latitude: -22.5714,
-    longitude: 17.0836,
-    price: 3500,
-    images: [property2, property3, property4, property1],
-    bedrooms: 1,
-    bathrooms: 1,
-    size: 18,
-    type: "room",
-    isNew: false,
-    verified: true,
-    rentalType: "long-term" as const,
-    description: `
-      Affordable and cozy student room in a shared house in Pioneerspark. Perfect for students 
-      looking for budget-friendly accommodation near campus. The room is fully furnished and includes 
-      access to shared kitchen, bathroom, and living areas. WiFi and utilities included in rent.
-    `,
-    amenities: [
-      { icon: Wifi, label: "WiFi Included" },
-      { icon: Coffee, label: "Shared Kitchen" },
-      { icon: Home, label: "Furnished" },
-    ],
-    agent: {
-      id: "2",
-      name: "John K.",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      phone: "+264 81 234 5678",
-      email: "john.k@naminya.com",
-      verified: true,
-      rating: 4.6,
-      listings: 8,
-    },
-    availableFrom: "2026-01-15",
-    deposit: 7000,
-    leaseTerm: "6-12 months",
-    petsAllowed: false,
-    furnished: true,
-  },
-  "3": {
-    id: "3",
-    title: "Spacious Family House",
-    location: "Olympia, Windhoek",
-    fullAddress: "789 Hill Street, Olympia, Windhoek",
-    latitude: -22.5556,
-    longitude: 17.0722,
-    price: 25000,
-    images: [property3, property4, property1, property2],
-    bedrooms: 4,
-    bathrooms: 2,
-    size: 180,
-    type: "house",
-    isNew: true,
-    verified: true,
-    rentalType: "long-term" as const,
-    description: `
-      Stunning family home in prestigious Olympia area. This spacious 4-bedroom, 2-bathroom house 
-      features a large open-plan living area, modern kitchen, separate dining room, and private garden. 
-      Perfect for families seeking comfort and space. The property includes a double garage, security 
-      system, and is located in a quiet, family-friendly neighborhood.
-    `,
-    amenities: [
-      { icon: Wifi, label: "WiFi Ready" },
-      { icon: Car, label: "Double Garage" },
-      { icon: Shield, label: "Security System" },
-      { icon: Coffee, label: "Modern Kitchen" },
-      { icon: Home, label: "Garden" },
-    ],
-    agent: {
-      id: "3",
-      name: "Maria N.",
-      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-      phone: "+264 81 345 6789",
-      email: "maria.n@naminya.com",
-      verified: true,
-      rating: 4.9,
-      listings: 15,
-    },
-    availableFrom: "2026-02-15",
-    deposit: 50000,
-    leaseTerm: "24 months",
-    petsAllowed: true,
-    furnished: false,
-  },
-  "4": {
-    id: "4",
-    title: "Bachelor Flat",
-    location: "Eros, Windhoek",
-    fullAddress: "321 Valley Road, Eros, Windhoek",
-    price: 5500,
-    images: [property4, property1, property2, property3],
-    bedrooms: 1,
-    bathrooms: 1,
-    size: 35,
-    type: "apartment",
-    isNew: false,
-    verified: true,
-    rentalType: "long-term" as const,
-    description: `
-      Modern bachelor flat perfect for young professionals. Compact yet functional space with 
-      open-plan kitchen and living area. Located in vibrant Eros area with easy access to city center 
-      and amenities.
-    `,
-    amenities: [
-      { icon: Wifi, label: "WiFi Ready" },
-      { icon: Car, label: "Street Parking" },
-      { icon: Coffee, label: "Kitchenette" },
-    ],
-    agent: {
-      id: "4",
-      name: "David T.",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-      phone: "+264 81 456 7890",
-      email: "david.t@naminya.com",
-      verified: true,
-      rating: 4.7,
-      listings: 6,
-    },
-    availableFrom: "2026-01-20",
-    deposit: 11000,
-    leaseTerm: "12 months",
-    petsAllowed: false,
-    furnished: false,
-  },
-  "5": {
-    id: "5",
-    title: "Luxury Guest House",
-    location: "Kleine Kuppe, Windhoek",
-    fullAddress: "456 Luxury Lane, Kleine Kuppe, Windhoek",
-    price: 0, // Not used for short-term
-    images: [property1, property2, property3, property4],
-    bedrooms: 3,
-    bathrooms: 2,
-    size: 120,
-    type: "guesthouse",
-    isNew: true,
-    verified: true,
-    rentalType: "short-term" as const,
-    pricingModel: {
-      daily: 2500,
-      weekly: 15000,
-      monthly: 50000,
-    },
-    minimumStay: 2,
-    maxGuests: 6,
-    cleaningFee: 500,
-    checkInTime: "14:00",
-    checkOutTime: "11:00",
-    instantBook: true,
-    cancellationPolicy: "moderate",
-    availability: {
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      blockedDates: [],
-    },
-    description: `
-      Beautiful luxury guest house perfect for short stays. Located in the heart of Kleine Kuppe, 
-      this spacious 3-bedroom, 2-bathroom property offers all the comforts of home. Perfect for families, 
-      business travelers, or groups visiting Windhoek. Fully furnished with modern amenities, WiFi, 
-      and secure parking.
-    `,
-    amenities: [
-      { icon: Wifi, label: "Free WiFi" },
-      { icon: Car, label: "Parking" },
-      { icon: Shield, label: "Security" },
-      { icon: Coffee, label: "Fully Equipped Kitchen" },
-      { icon: Home, label: "Fully Furnished" },
-    ],
-    agent: {
-      id: "1",
-      name: "Sarah M.",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face",
-      phone: "+264 81 123 4567",
-      email: "sarah.m@naminya.com",
-      verified: true,
-      rating: 4.8,
-      listings: 12,
-    },
-    availableFrom: new Date().toISOString().split('T')[0],
-    deposit: 5000,
-    leaseTerm: "Flexible",
-    petsAllowed: true,
-    furnished: true,
-  },
-  "6": {
-    id: "6",
-    title: "Safari Lodge - Etosha",
-    location: "Etosha National Park",
-    fullAddress: "Etosha Safari Lodge, Etosha National Park",
-    price: 0,
-    images: [property3, property4, property1, property2],
-    bedrooms: 4,
-    bathrooms: 3,
-    size: 200,
-    type: "lodge",
-    isNew: true,
-    verified: true,
-    rentalType: "short-term" as const,
-    pricingModel: {
-      daily: 5000,
-      weekly: 30000,
-    },
-    minimumStay: 3,
-    maxGuests: 8,
-    cleaningFee: 1000,
-    checkInTime: "15:00",
-    checkOutTime: "10:00",
-    instantBook: false,
-    cancellationPolicy: "strict",
-    availability: {
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      blockedDates: [],
-    },
-    description: `
-      Experience the beauty of Namibia at this stunning safari lodge near Etosha National Park. 
-      Perfect for wildlife enthusiasts and nature lovers. The lodge features 4 bedrooms, 3 bathrooms, 
-      a large living area, and outdoor deck with stunning views. Includes game drives and guided tours.
-    `,
-    amenities: [
-      { icon: Wifi, label: "WiFi" },
-      { icon: Car, label: "Parking" },
-      { icon: Shield, label: "Security" },
-      { icon: Home, label: "Fully Furnished" },
-    ],
-    agent: {
-      id: "3",
-      name: "Maria N.",
-      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-      phone: "+264 81 345 6789",
-      email: "maria.n@naminya.com",
-      verified: true,
-      rating: 4.9,
-      listings: 15,
-    },
-    availableFrom: new Date().toISOString().split('T')[0],
-    deposit: 10000,
-    leaseTerm: "Flexible",
-    petsAllowed: false,
-    furnished: true,
-  },
-  "7": {
-    id: "7",
-    title: "Desert Camp - Sossusvlei",
-    location: "Sossusvlei, Namibia",
-    fullAddress: "Desert Camp, Sossusvlei Area",
-    price: 0,
-    images: [property2, property3, property4, property1],
-    bedrooms: 2,
-    bathrooms: 1,
-    size: 50,
-    type: "camp",
-    isNew: false,
-    verified: true,
-    rentalType: "short-term" as const,
-    pricingModel: {
-      daily: 1500,
-      weekly: 9000,
-    },
-    minimumStay: 1,
-    maxGuests: 4,
-    cleaningFee: 300,
-    checkInTime: "14:00",
-    checkOutTime: "11:00",
-    instantBook: true,
-    cancellationPolicy: "flexible",
-    availability: {
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      blockedDates: [],
-    },
-    description: `
-      Authentic desert camp experience near the famous Sossusvlei dunes. Perfect for adventure seekers 
-      and those wanting to experience the Namib Desert. The camp includes 2 bedrooms, shared bathroom, 
-      and outdoor cooking area. Wake up to stunning desert sunrises.
-    `,
-    amenities: [
-      { icon: Home, label: "Camping Equipment" },
-      { icon: Coffee, label: "Outdoor Kitchen" },
-    ],
-    agent: {
-      id: "4",
-      name: "David T.",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-      phone: "+264 81 456 7890",
-      email: "david.t@naminya.com",
-      verified: true,
-      rating: 4.7,
-      listings: 6,
-    },
-    availableFrom: new Date().toISOString().split('T')[0],
-    deposit: 3000,
-    leaseTerm: "Flexible",
-    petsAllowed: false,
-    furnished: true,
-  },
+const OwnerAvatar = ({
+  image,
+  name,
+  className,
+}: {
+  image?: string;
+  name: string;
+  className: string;
+}) => {
+  if (image) {
+    return <img src={image} alt={name} className={className} />;
+  }
+
+  return (
+    <div className={cn(className, "grid place-items-center bg-primary/10 font-semibold text-primary")}>
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
 };
 
 const PropertyView = () => {
@@ -421,7 +91,7 @@ const PropertyView = () => {
   const navigate = useNavigate();
   const [isFavorite, setIsFavorite] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [api, setApi] = useState<any>(null);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("");
@@ -431,68 +101,104 @@ const PropertyView = () => {
   const [notes, setNotes] = useState("");
 
   const propertyId = id || "";
-  const property = mockProperties[propertyId];
+  const { property: syncedProperty, loading: propertyLoading } = useProperty(propertyId);
+  const { isSignedIn } = useAuth();
+  const savedProperties = useQuery(api.properties.saved);
+  const toggleSaved = useMutation(api.properties.toggleSaved);
+  const property = syncedProperty ? {
+    id: syncedProperty.id,
+    title: syncedProperty.title,
+    location: syncedProperty.location,
+    fullAddress: syncedProperty.full_address ?? syncedProperty.location,
+    latitude: syncedProperty.latitude,
+    longitude: syncedProperty.longitude,
+    price: syncedProperty.price,
+    images: syncedProperty.images.length > 0 ? syncedProperty.images : [property1],
+    bedrooms: syncedProperty.bedrooms,
+    bathrooms: syncedProperty.bathrooms,
+    size: syncedProperty.size ?? 0,
+    type: syncedProperty.type,
+    listingMode: syncedProperty.listing_mode,
+    rentalType: syncedProperty.rental_type,
+    isNew: syncedProperty.is_new,
+    verified: syncedProperty.verified,
+    description: syncedProperty.description ?? "Contact the agent for more details about this property.",
+    amenities: [
+      { icon: Shield, label: syncedProperty.verified ? "Verified" : "Listed" },
+      { icon: Home, label: syncedProperty.furnished ? "Furnished" : "Unfurnished" },
+      { icon: Car, label: "Parking nearby" },
+    ],
+    agent: {
+      id: syncedProperty.owner_id,
+      name: syncedProperty.owner_name || syncedProperty.owner_email || "Ndunda user",
+      image: syncedProperty.owner_avatar_url || "",
+      phone: syncedProperty.owner_whatsapp || syncedProperty.owner_phone || "",
+      email: syncedProperty.owner_email || "hello@ndunda.na",
+      verified: syncedProperty.verified,
+      rating: 4.8,
+      listings: 1,
+    },
+    availableFrom: syncedProperty.available_from ?? new Date().toISOString(),
+    deposit: syncedProperty.deposit ?? syncedProperty.price,
+    leaseTerm: syncedProperty.lease_term ?? "Contact agent",
+    petsAllowed: syncedProperty.pets_allowed,
+    furnished: syncedProperty.furnished,
+    pricingModel: syncedProperty.rental_type === "short-term" ? {
+      daily: syncedProperty.daily_price ?? undefined,
+      weekly: syncedProperty.weekly_price ?? undefined,
+      monthly: syncedProperty.monthly_price ?? undefined,
+    } : undefined,
+    checkInTime: syncedProperty.check_in_time,
+    checkOutTime: syncedProperty.check_out_time,
+    maxGuests: syncedProperty.max_guests,
+    minimumStay: syncedProperty.minimum_stay,
+  } : null;
   
   // Get similar properties (excluding current property)
-  const similarProperties = property && propertyId
-    ? Object.values(mockProperties)
-        .filter((p: any) => p.id !== propertyId && (p.type === property.type || p.location.includes(property.location.split(",")[0])))
-        .slice(0, 3)
-    : [];
+  const similarProperties: any[] = [];
   
-  // Mock reviews data
-  const reviews = property ? [
-    {
-      id: "1",
-      user: "John D.",
-      rating: 5,
-      date: "2026-01-10",
-      comment: "Great property! Very clean and well-maintained. The agent was very professional and helpful.",
-      verified: true,
-    },
-    {
-      id: "2",
-      user: "Sarah K.",
-      rating: 4,
-      date: "2026-01-05",
-      comment: "Nice location and good value for money. Would recommend!",
-      verified: true,
-    },
-    {
-      id: "3",
-      user: "Mike T.",
-      rating: 5,
-      date: "2025-12-28",
-      comment: "Excellent property management. Very responsive to maintenance requests.",
-      verified: false,
-    },
-  ] : [];
+  const reviews: Array<{
+    id: string;
+    user: string;
+    rating: number;
+    date: string;
+    comment: string;
+    verified: boolean;
+  }> = [];
   
   const averageRating = reviews.length > 0
     ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
     : 0;
 
   useEffect(() => {
-    // Load favorite status from localStorage or API
     if (!propertyId) return;
-    const savedFavorites = JSON.parse(localStorage.getItem("favorites") || "[]");
-    setIsFavorite(savedFavorites.includes(propertyId));
-  }, [propertyId]);
+    setIsFavorite(Boolean(savedProperties?.some((property) => property._id === propertyId)));
+  }, [propertyId, savedProperties]);
 
   useEffect(() => {
-    if (!api) return;
+    if (!carouselApi) return;
 
     const onSelect = () => {
-      setSelectedImageIndex(api.selectedScrollSnap());
+      setSelectedImageIndex(carouselApi.selectedScrollSnap());
     };
 
-    api.on("select", onSelect);
+    carouselApi.on("select", onSelect);
     onSelect();
 
     return () => {
-      api.off("select", onSelect);
+      carouselApi.off("select", onSelect);
     };
-  }, [api]);
+  }, [carouselApi]);
+
+  if (propertyLoading && !property) {
+    return (
+      <AppLayout>
+        <div className="min-h-[60vh] grid place-items-center">
+          <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!property) {
     return (
@@ -506,18 +212,20 @@ const PropertyView = () => {
     );
   }
 
-  const handleFavorite = () => {
+  const handleFavorite = async () => {
     if (!propertyId) return;
-    const savedFavorites = JSON.parse(localStorage.getItem("favorites") || "[]");
-    if (isFavorite) {
-      const newFavorites = savedFavorites.filter((favId: string) => favId !== propertyId);
-      localStorage.setItem("favorites", JSON.stringify(newFavorites));
-      setIsFavorite(false);
-      toast.success("Removed from saved properties");
-    } else {
-      localStorage.setItem("favorites", JSON.stringify([...savedFavorites, propertyId]));
-      setIsFavorite(true);
-      toast.success("Saved to favorites");
+    if (!isSignedIn) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const saved = await toggleSaved({ propertyId: propertyId as Id<"properties"> });
+      setIsFavorite(saved);
+      toast.success(saved ? "Saved property" : "Removed from saved properties");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not update saved property";
+      toast.error(message);
     }
   };
 
@@ -543,11 +251,18 @@ const PropertyView = () => {
 
   const handleContactAgent = (method: "phone" | "email" | "whatsapp") => {
     if (method === "phone") {
+      if (!property.agent.phone) {
+        toast.error("This owner has not added a phone number yet.");
+        return;
+      }
       window.location.href = `tel:${property.agent.phone}`;
     } else if (method === "email") {
       window.location.href = `mailto:${property.agent.email}?subject=Inquiry about ${property.title}`;
     } else if (method === "whatsapp") {
-      // Format phone number for WhatsApp (remove spaces, +, etc.)
+      if (!property.agent.phone) {
+        toast.error("This owner has not added a WhatsApp number yet.");
+        return;
+      }
       const phoneNumber = property.agent.phone.replace(/\s+/g, "").replace(/\+/g, "");
       const message = encodeURIComponent(`Hi! I'm interested in ${property.title}. Is it still available?`);
       window.open(`https://wa.me/${phoneNumber}?text=${message}`, "_blank");
@@ -578,11 +293,13 @@ const PropertyView = () => {
     "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
     "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
   ];
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
+  const streetViewLocation = property.latitude && property.longitude
+    ? `${property.latitude},${property.longitude}`
+    : encodeURIComponent(property.fullAddress || property.location);
 
   const handleImageThumbnailClick = (index: number) => {
-    if (api) {
-      api.scrollTo(index);
-    }
+    carouselApi?.scrollTo(index);
   };
 
   return (
@@ -619,80 +336,176 @@ const PropertyView = () => {
         </div>
       </div>
 
-      {/* Image Gallery */}
-      <div className="relative md:rounded-lg md:overflow-hidden md:border md:border-border">
-        <Carousel className="w-full" setApi={setApi}>
-          <CarouselContent>
-            {property.images.map((image: string, index: number) => (
-              <CarouselItem key={index}>
-                <div className="relative aspect-[4/3] md:aspect-[16/9] w-full">
-                  <img
-                    src={image}
-                    alt={`${property.title} - Image ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
+      <div className="bg-background md:px-6 md:py-5 lg:px-8">
+        <div className="mx-auto max-w-7xl lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.75fr)] lg:items-start lg:gap-6">
+          <div className="min-w-0">
+            {/* Image Gallery */}
+            <div className="relative overflow-hidden md:rounded-2xl md:border md:border-border md:shadow-sm">
+              <Carousel className="w-full" setApi={setCarouselApi}>
+                <CarouselContent>
+                  {property.images.map((image: string, index: number) => (
+                    <CarouselItem key={index}>
+                      <div className="relative aspect-[4/3] w-full md:aspect-[16/9] lg:h-[420px] lg:aspect-auto">
+                        <img
+                          src={image}
+                          alt={`${property.title} - Image ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious className="left-4 md:left-6" />
+                <CarouselNext className="right-4 md:right-6" />
+              </Carousel>
+
+              <div className="absolute bottom-4 right-4 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                {selectedImageIndex + 1} / {property.images.length}
+              </div>
+            </div>
+
+            {/* Image Thumbnails */}
+            {property.images.length > 1 && (
+              <div className="bg-background px-4 py-3 md:px-0">
+                <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 md:justify-center md:overflow-x-visible lg:justify-start">
+                  {property.images.map((image: string, index: number) => (
+                    <button
+                      key={index}
+                      onClick={() => handleImageThumbnailClick(index)}
+                      className={cn(
+                        "relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 transition-all md:h-16 md:w-24",
+                        selectedImageIndex === index
+                          ? "border-primary ring-2 ring-primary/25"
+                          : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      <img
+                        src={image}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
                 </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="left-4 md:left-6" />
-          <CarouselNext className="right-4 md:right-6" />
-        </Carousel>
+              </div>
+            )}
+          </div>
 
-        {/* Image counter */}
-        <div className="absolute bottom-4 right-4 bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
-          {selectedImageIndex + 1} / {property.images.length}
-        </div>
+          <aside className="hidden lg:block">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-semibold leading-tight text-foreground">{property.title}</h1>
+                  <div className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{property.fullAddress}</span>
+                  </div>
+                </div>
+                {property.verified && (
+                  <Badge className="shrink-0 bg-primary text-primary-foreground">
+                    Verified
+                  </Badge>
+                )}
+              </div>
 
-        {/* Badges */}
-        <div className="absolute top-4 left-4 flex flex-col gap-2">
-          {property.isNew && (
-            <Badge className="bg-primary text-primary-foreground">New Listing</Badge>
-          )}
-          {property.verified && (
-            <Badge className="bg-green-600 text-white">
-              <CheckCircle2 className="w-3 h-3 mr-1" />
-              Verified
-            </Badge>
-          )}
+              <div className="mb-5 flex items-baseline gap-2">
+                <span className="text-3xl font-semibold text-primary">
+                  N${property.price.toLocaleString()}
+                </span>
+                {property.listingMode !== "buy" && (
+                  <span className="text-sm text-muted-foreground">
+                    /{property.rentalType === "short-term" ? "night" : "month"}
+                  </span>
+                )}
+              </div>
+
+              <div className="mb-5 grid grid-cols-3 gap-2 border-y border-border py-4">
+                <div className="rounded-xl bg-muted/50 p-3">
+                  <Bed className="mb-2 h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold">{property.bedrooms} Beds</p>
+                </div>
+                <div className="rounded-xl bg-muted/50 p-3">
+                  <Bath className="mb-2 h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold">{property.bathrooms} Bath</p>
+                </div>
+                <div className="rounded-xl bg-muted/50 p-3">
+                  <Square className="mb-2 h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold">{property.size}m²</p>
+                </div>
+              </div>
+
+              <div className="mb-5 grid grid-cols-2 gap-3">
+                {property.rentalType === "short-term" ? (
+                  <>
+                    <div className="rounded-xl border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Check-in</p>
+                      <p className="text-sm font-semibold">{property.checkInTime || "14:00"}</p>
+                    </div>
+                    <div className="rounded-xl border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Check-out</p>
+                      <p className="text-sm font-semibold">{property.checkOutTime || "11:00"}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-xl border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Deposit</p>
+                      <p className="text-sm font-semibold">N${property.deposit.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-xl border border-border p-3">
+                      <p className="text-xs text-muted-foreground">Available</p>
+                      <p className="text-sm font-semibold">
+                        {new Date(property.availableFrom).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="mb-5 flex items-center gap-3 rounded-xl bg-primary/5 p-3">
+                <OwnerAvatar
+                  image={property.agent.image}
+                  name={property.agent.name}
+                  className="h-12 w-12 rounded-full border border-primary/20 object-cover"
+                />
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground">{property.agent.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {property.agent.verified ? "Verified publisher" : "Property publisher"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {property.listingMode !== "buy" && property.rentalType === "long-term" && (
+                  <Button className="col-span-2" onClick={handleScheduleViewing}>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Schedule Viewing
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => handleContactAgent("phone")}>
+                  <Phone className="mr-2 h-4 w-4" />
+                  Call
+                </Button>
+                <Button variant="outline" onClick={() => handleContactAgent("whatsapp")}>
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  WhatsApp
+                </Button>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
 
-      {/* Image Thumbnails */}
-      {property.images.length > 1 && (
-        <div className="px-4 py-3 md:px-0 md:py-4 bg-card border-b border-border">
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 md:justify-center md:overflow-x-visible">
-            {property.images.map((image: string, index: number) => (
-              <button
-                key={index}
-                onClick={() => handleImageThumbnailClick(index)}
-                className={cn(
-                  "relative shrink-0 w-20 h-20 md:w-24 md:h-24 rounded-lg overflow-hidden border-2 transition-all",
-                  selectedImageIndex === index
-                    ? "border-primary ring-2 ring-primary ring-offset-2"
-                    : "border-border hover:border-primary/50"
-                )}
-              >
-                <img
-                  src={image}
-                  alt={`Thumbnail ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Property Details */}
-      <div className="px-4 py-6 md:px-0 md:py-8">
+      <div className="px-4 py-6 md:px-6 md:py-6 lg:pt-1">
         {/* Desktop Layout: Side-by-side */}
-        <div className="md:grid md:grid-cols-3 md:gap-8 md:items-start">
+        <div className="mx-auto max-w-7xl md:grid md:grid-cols-3 md:gap-8 md:items-start">
           {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
             {/* Title and Location */}
-            <div>
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-2">{property.title}</h1>
+            <div className="lg:hidden">
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold text-foreground mb-2">{property.title}</h1>
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <MapPin className="w-4 h-4" />
                 <span className="text-sm md:text-base">{property.fullAddress}</span>
@@ -700,10 +513,16 @@ const PropertyView = () => {
             </div>
 
             {/* Price */}
-        <div className="flex items-baseline gap-2">
-          {property.rentalType === "short-term" && property.pricingModel?.daily ? (
+        <div className="flex items-baseline gap-2 lg:hidden">
+          {property.listingMode === "buy" ? (
             <>
-              <span className="text-3xl font-bold text-primary">
+              <span className="text-2xl font-semibold text-primary">
+                N${property.price.toLocaleString()}
+              </span>
+            </>
+          ) : property.rentalType === "short-term" && property.pricingModel?.daily ? (
+            <>
+              <span className="text-2xl font-semibold text-primary">
                 N${property.pricingModel.daily.toLocaleString()}
               </span>
               <span className="text-muted-foreground">/night</span>
@@ -715,7 +534,7 @@ const PropertyView = () => {
             </>
           ) : (
             <>
-              <span className="text-3xl font-bold text-primary">
+              <span className="text-2xl font-semibold text-primary">
                 N${property.price.toLocaleString()}
               </span>
               <span className="text-muted-foreground">/month</span>
@@ -724,7 +543,7 @@ const PropertyView = () => {
         </div>
 
         {/* Key Features */}
-        <div className="flex items-center gap-6 py-4 border-y border-border">
+        <div className="flex items-center gap-6 py-4 border-y border-border lg:hidden">
           <div className="flex items-center gap-2">
             <Bed className="w-5 h-5 text-muted-foreground" />
             <span className="text-sm font-medium">{property.bedrooms} Bed{property.bedrooms !== 1 ? 's' : ''}</span>
@@ -740,7 +559,7 @@ const PropertyView = () => {
         </div>
 
         {/* Quick Info */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:hidden">
           {property.rentalType === "short-term" ? (
             <>
               <div className="bg-card rounded-lg p-3 border border-border">
@@ -789,8 +608,8 @@ const PropertyView = () => {
         </div>
 
         {/* Action Buttons - Only show for long-term rentals */}
-        {property.rentalType === "long-term" && (
-          <div className="md:col-span-2">
+        {property.listingMode !== "buy" && property.rentalType === "long-term" && (
+          <div className="md:col-span-2 lg:hidden">
           <div className="flex gap-3">
             <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
               <DialogTrigger asChild>
@@ -947,7 +766,7 @@ const PropertyView = () => {
             </div>
             {/* Google Street View Integration */}
             <div className="aspect-video bg-muted rounded-lg overflow-hidden border border-border mb-4 relative">
-              {property.latitude && property.longitude ? (
+              {googleMapsApiKey ? (
                 <iframe
                   width="100%"
                   height="100%"
@@ -955,23 +774,10 @@ const PropertyView = () => {
                   loading="lazy"
                   allowFullScreen
                   referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://www.google.com/maps/embed/v1/streetview?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&location=${property.latitude},${property.longitude}&heading=210&pitch=0&fov=90`}
+                  src={`https://www.google.com/maps/embed/v1/streetview?key=${googleMapsApiKey}&location=${streetViewLocation}&heading=210&pitch=0&fov=90`}
                   title="Property Street View"
                 />
               ) : (
-                <iframe
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  loading="lazy"
-                  allowFullScreen
-                  referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://www.google.com/maps/embed/v1/streetview?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&location=${encodeURIComponent(property.fullAddress || property.location)}&heading=210&pitch=0&fov=90`}
-                  title="Property Street View"
-                />
-              )}
-              {/* Fallback if no API key */}
-              {!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
                 <div className="absolute inset-0 flex items-center justify-center bg-muted/95 backdrop-blur-sm">
                   <div className="text-center">
                     <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
@@ -1000,7 +806,7 @@ const PropertyView = () => {
             <div className="bg-card rounded-lg p-4 border border-border mb-4">
               <div className="flex items-center gap-4 mb-4">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-foreground mb-1">
+                  <div className="text-2xl font-semibold text-foreground mb-1">
                     {averageRating.toFixed(1)}
                   </div>
                   <div className="flex items-center gap-1">
@@ -1120,9 +926,9 @@ const PropertyView = () => {
         {/* Agent Card */}
         <div className="bg-card rounded-xl p-4 md:p-6 border border-border mt-6">
           <div className="flex items-start gap-4 mb-4">
-            <img
-              src={property.agent.image}
-              alt={property.agent.name}
+            <OwnerAvatar
+              image={property.agent.image}
+              name={property.agent.name}
               className="w-16 h-16 rounded-full object-cover border-2 border-primary/20"
             />
             <div className="flex-1">
@@ -1172,7 +978,7 @@ const PropertyView = () => {
       </div>
 
       {/* Sticky Bottom Action Bar - Only for long-term rentals (Mobile only) */}
-      {property.rentalType === "long-term" && (
+      {property.listingMode !== "buy" && property.rentalType === "long-term" && (
         <div className="md:hidden sticky bottom-0 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="flex-1">
@@ -1286,3 +1092,4 @@ const PropertyView = () => {
 };
 
 export default PropertyView;
+

@@ -21,63 +21,136 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useSearchProperties, useProperties } from "@/hooks/useProperties";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
+import type { Property, PropertyFilters } from "@/types/property";
+
+const DEFAULT_MAX_PRICE = 10000000;
+
+const normalizeType = (type: string | null) => {
+  if (!type) return null;
+  const normalized = type.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    houses: "house",
+    flat: "apartment",
+    flats: "apartment",
+    arpartment: "apartment",
+    aprtment: "apartment",
+    artment: "apartment",
+    partment: "apartment",
+    apartments: "apartment",
+    plots: "plot",
+    land: "plot",
+    erf: "plot",
+    rooms: "room",
+    guesthouses: "guesthouse",
+    "guest-houses": "guesthouse",
+    ghetto: "mbashu",
+    "ghetto-mbashu": "mbashu",
+    offices: "office-space",
+    office: "office-space",
+    "student-room": "student-accommodation",
+    "student-rooms": "student-accommodation",
+    hotels: "office-space",
+    hotel: "office-space",
+    lodges: "student-accommodation",
+    camps: "student-accommodation",
+    "lodges-camps": "student-accommodation",
+  };
+  return aliases[normalized] ?? normalized;
+};
 
 const Search = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t, listingMode, setListingMode } = useLanguage();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   // Filter states
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, DEFAULT_MAX_PRICE]);
   const [bedroomsFilter, setBedroomsFilter] = useState<number | null>(null);
   const [bathroomsFilter, setBathroomsFilter] = useState<number | null>(null);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null);
-  const [rentalTypeFilter, setRentalTypeFilter] = useState<string | null>(null);
+  const [rentalTypeFilter, setRentalTypeFilter] = useState<PropertyFilters["rentalType"] | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   
-  // Get type from URL params
+  // Get filters from URL params
   useEffect(() => {
-    const typeParam = searchParams.get("type");
-    if (typeParam) {
-      setPropertyTypeFilter(typeParam);
-      setActiveFilters((prev) => (prev.includes("type") ? prev : [...prev, "type"]));
-    }
+    const typeParam = normalizeType(searchParams.get("type"));
+    const minPrice = Number(searchParams.get("minPrice") || 0);
+    const maxPrice = Number(searchParams.get("maxPrice") || DEFAULT_MAX_PRICE);
+    const bedrooms = searchParams.get("bedrooms");
+    const bathrooms = searchParams.get("bathrooms");
+    const rentalType = searchParams.get("rentalType");
+    const verified = searchParams.get("verified") === "true";
+
+    setPropertyTypeFilter(typeParam);
+    setPriceRange([minPrice, maxPrice]);
+    setBedroomsFilter(bedrooms ? Number(bedrooms) : null);
+    setBathroomsFilter(bathrooms ? Number(bathrooms) : null);
+    setRentalTypeFilter(rentalType === "long-term" || rentalType === "short-term" ? rentalType : null);
+    setVerifiedOnly(verified);
+
+    const nextActiveFilters: string[] = [];
+    if (minPrice > 0 || maxPrice < DEFAULT_MAX_PRICE) nextActiveFilters.push("price");
+    if (bedrooms) nextActiveFilters.push("beds");
+    if (bathrooms) nextActiveFilters.push("baths");
+    if (typeParam) nextActiveFilters.push("type");
+    if (rentalType) nextActiveFilters.push("rentalType");
+    if (verified) nextActiveFilters.push("verified");
+    setActiveFilters(nextActiveFilters);
   }, [searchParams]);
 
   useEffect(() => {
     const query = searchParams.get("q");
-    if (query) {
-      setSearchQuery(query);
+    setSearchQuery(query || "");
+
+    const modeParam = searchParams.get("mode");
+    if (modeParam === "buy" || modeParam === "rent") {
+      setListingMode(modeParam);
     }
-  }, [searchParams]);
+  }, [searchParams, setListingMode]);
 
   const handleApplyFilters = () => {
     const newFilters: string[] = [];
-    if (priceRange[0] > 0 || priceRange[1] < 50000) newFilters.push("price");
+    if (priceRange[0] > 0 || priceRange[1] < DEFAULT_MAX_PRICE) newFilters.push("price");
     if (bedroomsFilter !== null) newFilters.push("beds");
     if (bathroomsFilter !== null) newFilters.push("baths");
     if (propertyTypeFilter) newFilters.push("type");
     if (rentalTypeFilter) newFilters.push("rentalType");
     if (verifiedOnly) newFilters.push("verified");
-    
+
+    const nextParams: Record<string, string> = { mode: listingMode };
+    if (searchQuery.trim()) nextParams.q = searchQuery.trim();
+    if (propertyTypeFilter) nextParams.type = propertyTypeFilter;
+    if (priceRange[0] > 0) nextParams.minPrice = String(priceRange[0]);
+    if (priceRange[1] < DEFAULT_MAX_PRICE) nextParams.maxPrice = String(priceRange[1]);
+    if (bedroomsFilter !== null) nextParams.bedrooms = String(bedroomsFilter);
+    if (bathroomsFilter !== null) nextParams.bathrooms = String(bathroomsFilter);
+    if (rentalTypeFilter) nextParams.rentalType = rentalTypeFilter;
+    if (verifiedOnly) nextParams.verified = "true";
+
     setActiveFilters(newFilters);
+    setSearchParams(nextParams);
     setFilterOpen(false);
   };
 
   const handleClearFilters = () => {
-    setPriceRange([0, 50000]);
+    setPriceRange([0, DEFAULT_MAX_PRICE]);
     setBedroomsFilter(null);
     setBathroomsFilter(null);
     setPropertyTypeFilter(null);
     setRentalTypeFilter(null);
     setVerifiedOnly(false);
     setActiveFilters([]);
+    const nextParams: Record<string, string> = { mode: listingMode };
+    if (searchQuery.trim()) nextParams.q = searchQuery.trim();
+    setSearchParams(nextParams);
   };
 
   const getActiveFilterCount = () => {
     let count = 0;
-    if (priceRange[0] > 0 || priceRange[1] < 50000) count++;
+    if (priceRange[0] > 0 || priceRange[1] < DEFAULT_MAX_PRICE) count++;
     if (bedroomsFilter !== null) count++;
     if (bathroomsFilter !== null) count++;
     if (propertyTypeFilter) count++;
@@ -88,44 +161,69 @@ const Search = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setSearchParams({ q: searchQuery });
+    const nextParams: Record<string, string> = { mode: listingMode };
+    if (searchQuery.trim()) nextParams.q = searchQuery.trim();
+    setSearchParams(nextParams);
   };
 
-  // Build filters object for Supabase query
+  const propertyTypeOptions = useMemo(() => {
+    const base = [
+      { value: "house", label: "House", modes: ["buy", "rent"] },
+      { value: "apartment", label: "Apartment", modes: ["buy", "rent"] },
+      { value: "plot", label: "Plot", modes: ["buy"] },
+      { value: "room", label: "Room", modes: ["rent"] },
+      { value: "mbashu", label: "Ghetto/Mbashu", modes: ["rent"] },
+      { value: "guesthouse", label: "Guest House", modes: ["rent"] },
+      { value: "office-space", label: "Office Space", modes: ["rent"] },
+      { value: "student-accommodation", label: "Student Accommodation", modes: ["rent"] },
+      { value: "commercial", label: "Commercial", modes: ["buy", "rent"] },
+      { value: "airbnb", label: "Vacation Rental", modes: ["rent"] },
+    ];
+    return base.filter((option) => option.modes.includes(listingMode));
+  }, [listingMode]);
+
+  // Build filters object for property search
   const filters = useMemo(() => {
-    const filterObj: any = {
+    const filterObj: PropertyFilters = {
       minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
-      maxPrice: priceRange[1] < 50000 ? priceRange[1] : undefined,
+      maxPrice: priceRange[1] < DEFAULT_MAX_PRICE ? priceRange[1] : undefined,
       bedrooms: bedroomsFilter !== null ? bedroomsFilter : undefined,
       bathrooms: bathroomsFilter !== null ? bathroomsFilter : undefined,
       type: propertyTypeFilter || undefined,
       rentalType: rentalTypeFilter || undefined,
       verified: verifiedOnly || undefined,
+      listingMode,
+      limit: 72,
     };
     // Remove undefined values
     Object.keys(filterObj).forEach(key => filterObj[key] === undefined && delete filterObj[key]);
     return filterObj;
-  }, [priceRange, bedroomsFilter, bathroomsFilter, propertyTypeFilter, rentalTypeFilter, verifiedOnly]);
+  }, [priceRange, bedroomsFilter, bathroomsFilter, propertyTypeFilter, rentalTypeFilter, verifiedOnly, listingMode]);
 
-  // Use Supabase hooks
+  // Property search from Convex.
   const { properties: searchResults, loading: searchLoading } = useSearchProperties(
     searchQuery,
     filters
   );
-  const { properties: allProperties, loading: allLoading } = useProperties(filters);
+  const hasSearchQuery = Boolean(searchQuery.trim());
+  const { properties: allProperties, loading: allLoading } = useProperties(filters, { skip: hasSearchQuery });
 
   // Use search results if query exists, otherwise use all properties
-  const properties = searchQuery ? searchResults : allProperties;
-  const loading = searchQuery ? searchLoading : allLoading;
+  const properties = hasSearchQuery ? searchResults : allProperties;
+  const loading = hasSearchQuery ? searchLoading : allLoading;
 
   // Transform properties for PropertyCard component
   const transformedProperties = useMemo(() => {
-    return properties.map((property: any) => ({
+    return properties.map((property: Property) => ({
       id: property.id,
       title: property.title,
       location: property.location,
       price: property.price,
       image: property.images?.[0] || '/placeholder.svg',
+      images: property.images,
+      ownerName: property.owner_name || property.owner_email,
+      ownerAvatarUrl: property.owner_avatar_url,
+      ownerRole: property.owner_role,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,
       size: property.size || 0,
@@ -137,6 +235,7 @@ const Search = () => {
         monthly: property.monthly_price,
       } : undefined,
       isNew: property.is_new,
+      listingMode: property.listing_mode,
     }));
   }, [properties]);
 
@@ -158,6 +257,37 @@ const Search = () => {
             <SearchIcon className="w-5 h-5" />
           </Button>
         </form>
+
+        <div className="grid grid-cols-2 gap-1 bg-muted rounded-lg p-1 mb-4 md:max-w-sm">
+          {(["buy", "rent"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => {
+                setListingMode(mode);
+                const nextParams: Record<string, string> = { mode };
+                if (searchQuery.trim()) nextParams.q = searchQuery.trim();
+                const nextTypes = propertyTypeOptions
+                  .filter((option) => option.modes.includes(mode))
+                  .map((option) => option.value);
+                if (propertyTypeFilter && nextTypes.includes(propertyTypeFilter)) {
+                  nextParams.type = propertyTypeFilter;
+                } else {
+                  setPropertyTypeFilter(null);
+                }
+                setSearchParams(nextParams);
+              }}
+              className={cn(
+                "h-10 rounded-md text-sm font-semibold transition-colors",
+                listingMode === mode
+                  ? "bg-card text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {mode === "buy" ? t.home.buy : t.home.rent}
+            </button>
+          ))}
+        </div>
 
         {/* Filter Button */}
         <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
@@ -195,7 +325,7 @@ const Search = () => {
                     value={[priceRange[0], priceRange[1]]}
                     onValueChange={(values) => setPriceRange([values[0], values[1]])}
                     min={0}
-                    max={50000}
+                    max={DEFAULT_MAX_PRICE}
                     step={1000}
                     className="w-full"
                   />
@@ -218,7 +348,7 @@ const Search = () => {
                         value={priceRange[1]}
                         onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 50000])}
                         min={priceRange[0]}
-                        max={50000}
+                        max={DEFAULT_MAX_PRICE}
                         className="w-full"
                       />
                     </div>
@@ -279,15 +409,11 @@ const Search = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="any">Any</SelectItem>
-                    <SelectItem value="house">House</SelectItem>
-                    <SelectItem value="apartment">Apartment</SelectItem>
-                    <SelectItem value="room">Room</SelectItem>
-                    <SelectItem value="mbashu">Ghetto/Mbashu</SelectItem>
-                    <SelectItem value="guesthouse">Guest House</SelectItem>
-                    <SelectItem value="hotel">Hotel</SelectItem>
-                    <SelectItem value="lodges-camps">Lodges & Camps</SelectItem>
-                    <SelectItem value="commercial">Commercial</SelectItem>
-                    <SelectItem value="airbnb">Vacation Rental</SelectItem>
+                    {propertyTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -297,7 +423,9 @@ const Search = () => {
                 <Label className="text-base font-semibold">Rental Type</Label>
                 <Select
                   value={rentalTypeFilter || "any"}
-                  onValueChange={(value) => setRentalTypeFilter(value === "any" ? null : value)}
+                  onValueChange={(value) =>
+                    setRentalTypeFilter(value === "any" ? null : value as PropertyFilters["rentalType"])
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Any" />
@@ -340,7 +468,7 @@ const Search = () => {
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {priceRange[0] > 0 || priceRange[1] < 50000 ? (
+                    {priceRange[0] > 0 || priceRange[1] < DEFAULT_MAX_PRICE ? (
                       <div className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-md text-xs">
                         Price: N${priceRange[0].toLocaleString()} - N${priceRange[1].toLocaleString()}
                         <button
@@ -450,8 +578,11 @@ const Search = () => {
                 <SearchIcon className="w-16 h-16 md:w-20 md:h-20 text-muted-foreground mx-auto mb-4 opacity-50" />
                 <h3 className="text-lg md:text-xl font-semibold text-foreground mb-2">No properties found</h3>
                 <p className="text-base md:text-lg text-muted-foreground">
-                  Try adjusting your search or filters
+                  Try clearing mode, category, price, bedroom, bathroom, rental type, or verified filters.
                 </p>
+                <Button variant="outline" className="mt-4" onClick={handleClearFilters}>
+                  Clear filters
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
@@ -463,6 +594,10 @@ const Search = () => {
                     location={listing.location}
                     price={listing.price}
                     image={listing.image}
+                    images={listing.images}
+                    ownerName={listing.ownerName}
+                    ownerAvatarUrl={listing.ownerAvatarUrl}
+                    ownerRole={listing.ownerRole}
                     bedrooms={listing.bedrooms}
                     bathrooms={listing.bathrooms}
                     size={listing.size}
@@ -470,6 +605,7 @@ const Search = () => {
                     rentalType={listing.rentalType}
                     pricingModel={listing.pricingModel}
                     isNew={listing.isNew}
+                    listingMode={listing.listingMode}
                   />
           ))}
         </div>

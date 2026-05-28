@@ -4,9 +4,11 @@ import TopNav from "./TopNav";
 
 interface AppLayoutProps {
   children: ReactNode;
+  /** Hide default mobile header area when page has its own hero (e.g. home) */
+  hideMobileHeader?: boolean;
 }
 
-const AppLayout = ({ children }: AppLayoutProps) => {
+const AppLayout = ({ children, hideMobileHeader }: AppLayoutProps) => {
   return (
     <div className="app-container">
       {/* Desktop Top Navigation */}

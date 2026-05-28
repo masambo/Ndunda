@@ -24,9 +24,31 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Copy env template and add Clerk keys (see .env.example).
+cp .env.example .env.local
+
+# Step 5: Start Convex backend (separate terminal).
+npx convex dev
+
+# Step 6: Start the Vite dev server.
 npm run dev
 ```
+
+### Auth & backend
+
+- **Clerk** — sign-in, sign-up, sessions ([dashboard](https://dashboard.clerk.com))
+- **Convex** — database and API ([docs](https://docs.convex.dev))
+
+After creating a Clerk app, enable the [Convex integration](https://dashboard.clerk.com/apps/setup/convex) and set:
+
+```sh
+npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-clerk-frontend-api>.clerk.accounts.dev
+npx convex env set ADMIN_EMAILS yammertaurus@gmail.com
+```
+
+Add `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_FRONTEND_API_URL`, and `CLERK_JWT_ISSUER_DOMAIN` to `.env.local`.
+
+Clerk must have a JWT template named `convex`. If `/admin` shows `No JWT template exists with name: convex`, open the Clerk Dashboard for the app and activate the Convex integration or create the `convex` JWT template. Then sign out completely and sign back in so Clerk issues a fresh token.
 
 **Edit a file directly in GitHub**
 
@@ -51,6 +73,8 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Convex (backend)
+- Clerk (authentication)
 
 ## How can I deploy this project?
 

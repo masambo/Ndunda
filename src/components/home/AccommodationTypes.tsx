@@ -1,50 +1,57 @@
 import { useNavigate } from "react-router-dom";
-import { Home, Building, DoorOpen, Warehouse, Hotel, TreePine, Building2, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const accommodationTypes = [
-  { id: "houses", label: "Houses", icon: Home, color: "text-blue-600" },
-  { id: "apartments", label: "Apartments", icon: Building, color: "text-green-600" },
-  { id: "rooms", label: "Rooms", icon: DoorOpen, color: "text-purple-600" },
-  { id: "guesthouses", label: "Guest Houses", icon: Hotel, color: "text-orange-600" },
-  { id: "hotels", label: "Hotels", icon: Building2, color: "text-red-600" },
-  { id: "lodges-camps", label: "Lodges & Camps", icon: TreePine, color: "text-emerald-600" },
-  { id: "commercial", label: "Commercial", icon: Store, color: "text-teal-600" },
-  { id: "mbashu", label: "Ghetto/Mbashu", icon: Warehouse, color: "text-indigo-600" },
+  { id: "house", label: "House", image: "/Houses.png", tint: "bg-blue-50/80", modes: ["buy", "rent"] },
+  { id: "apartment", label: "Apartment", image: "/apartments.png", tint: "bg-green-50/80", modes: ["buy", "rent"] },
+  { id: "plot", label: "Plot", image: "/commercial.png", tint: "bg-lime-50/80", modes: ["buy"] },
+  { id: "room", label: "Room", image: "/rooms.png", tint: "bg-purple-50/80", modes: ["rent"] },
+  { id: "guesthouse", label: "Guest House", image: "/guesthouse.png", tint: "bg-orange-50/80", modes: ["rent"] },
+  { id: "office-space", label: "Office Space", image: "/office.png", tint: "bg-red-50/80", modes: ["rent"] },
+  { id: "student-accommodation", label: "Student Accommodation", image: "/student.png", tint: "bg-emerald-50/80", modes: ["rent"] },
+  { id: "commercial", label: "Commercial", image: "/commercial.png", tint: "bg-teal-50/80", modes: ["buy", "rent"] },
+  { id: "mbashu", label: "Ghetto/Mbashu", image: "/ghetto.png", tint: "bg-indigo-50/80", modes: ["rent"] },
 ];
 
 const AccommodationTypes = () => {
   const navigate = useNavigate();
+  const { listingMode } = useLanguage();
 
   const handleTypeClick = (typeId: string) => {
-    navigate(`/search?type=${typeId}`);
+    navigate(`/?mode=${listingMode}&type=${typeId}`);
   };
 
   return (
     <div className="px-4 py-4 md:px-0 md:py-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-2 md:gap-3">
-        {accommodationTypes.map((type) => {
-          const Icon = type.icon;
-          return (
-            <button
-              key={type.id}
-              onClick={() => handleTypeClick(type.id)}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-5">
+        {accommodationTypes
+          .filter((type) => type.modes.includes(listingMode))
+          .map((type, index) => (
+          <button
+            key={type.id}
+            onClick={() => handleTypeClick(type.id)}
+            className="group flex min-h-[7.75rem] flex-col items-center justify-center gap-2.5 rounded-xl bg-card/80 p-3 transition-all duration-300 animate-slide-up hover:-translate-y-1 hover:bg-card hover:shadow-card active:scale-[0.98] md:min-h-[9rem] md:p-4"
+            style={{ animationDelay: `${index * 35}ms` }}
+          >
+            <div
               className={cn(
-                "flex flex-col items-center justify-center gap-1.5 p-2 md:p-2.5 bg-card rounded-lg border border-border transition-all duration-200 hover:border-primary hover:shadow-card group"
+                "flex h-20 w-20 items-center justify-center rounded-2xl transition-all duration-300 group-hover:scale-110 md:h-24 md:w-24",
+                type.tint,
               )}
             >
-              <div className={cn(
-                "w-8 h-8 md:w-9 md:h-9 rounded-lg bg-primary/10 flex items-center justify-center transition-all duration-200 group-hover:bg-primary/20 group-hover:scale-110",
-                type.color
-              )}>
-                <Icon className={cn("w-4 h-4 md:w-4 md:h-4", type.color)} />
-              </div>
-              <span className="text-xs md:text-sm font-medium text-foreground">
-                {type.label}
-              </span>
-            </button>
-          );
-        })}
+              <img
+                src={type.image}
+                alt=""
+                className="h-16 w-16 object-contain drop-shadow-sm transition-transform duration-300 group-hover:-rotate-3 md:h-20 md:w-20"
+                loading="lazy"
+              />
+            </div>
+            <span className="min-h-8 px-1 text-center text-xs font-semibold leading-tight text-foreground/90 md:text-sm">
+              {type.label}
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );
