@@ -300,7 +300,7 @@ const Admin = () => {
                       <li>Open Clerk Dashboard for this app.</li>
                       <li>Go to <span className="font-semibold">JWT Templates</span> or <span className="font-semibold">Integrations → Convex</span>.</li>
                       <li>Create/enable the template named <span className="font-semibold">convex</span>.</li>
-                      <li>Use issuer <span className="font-semibold">https://adapted-ladybug-29.clerk.accounts.dev</span>.</li>
+                      <li>Use your production Clerk Frontend API URL as the issuer.</li>
                       <li>Sign out completely, then sign back in.</li>
                     </ol>
                   </div>
@@ -309,7 +309,7 @@ const Admin = () => {
                   <div className="mt-3 rounded-xl border border-amber-300 bg-white/70 p-3 text-xs">
                     <p className="font-semibold">Required Convex setup</p>
                     <ol className="mt-1 list-decimal space-y-1 pl-4">
-                      <li>Run <span className="font-semibold">cmd /c npx convex env set CLERK_JWT_ISSUER_DOMAIN https://adapted-ladybug-29.clerk.accounts.dev</span>.</li>
+                      <li>Run <span className="font-semibold">cmd /c npx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-clerk-frontend-api.clerk.accounts.dev</span>.</li>
                       <li>Run <span className="font-semibold">cmd /c npx convex dev --once</span> to push auth config and functions.</li>
                       <li>Sign out completely, then sign back in.</li>
                     </ol>

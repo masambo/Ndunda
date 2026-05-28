@@ -78,20 +78,43 @@ This project is built with:
 
 ## How can I deploy this project?
 
-This project can be deployed to any hosting platform that supports Vite/React applications:
-- Vercel
-- Netlify
-- AWS Amplify
-- GitHub Pages
-- Or any Node.js hosting service
+### Vercel
+
+This repo includes `vercel.json` for Vite SPA routing and a Vercel build command that deploys Convex before building the frontend:
+
+```sh
+npm run build:vercel
+```
+
+In Vercel, set these environment variables:
+
+- `CONVEX_DEPLOY_KEY` - production deploy key from the Convex dashboard
+- `VITE_CLERK_PUBLISHABLE_KEY` - production Clerk publishable key
+- `VITE_GOOGLE_MAPS_API_KEY` - optional, enables Street View
+
+Set these on the Convex production deployment:
+
+```sh
+npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-production-clerk-frontend-api>.clerk.accounts.dev
+npx convex env set ADMIN_EMAILS yammertaurus@gmail.com
+```
+
+Vercel settings:
+
+- Framework preset: Vite
+- Install command: `npm install`
+- Build command: `npm run build:vercel`
+- Output directory: `dist`
+
+For Clerk production auth, add your production domain in Clerk. Convex notes that Clerk does not support the default `https://<site-name>.vercel.app` domain for production auth, so use a custom domain for the live site.
 
 ## Features
 
 - Property listings with detailed views
 - Agent profiles and reviews
-- Real-time messaging/chat
 - User authentication (Login/Signup)
 - Saved properties
 - Search and filtering
 - Map integration
+- WhatsApp and phone contact redirects
 - Schedule property viewings
