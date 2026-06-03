@@ -71,8 +71,14 @@
       });
 
       window.setTimeout(function () {
-        renderStartupError("Ndunda is still loading", "The JavaScript bundle did not finish mounting after 8 seconds. Hard-refresh the page once. If this repeats, check the browser console and Vercel environment variables.");
-      }, 8000);
+        var root = document.getElementById("root");
+        if (!root || window.__NDUNDA_APP_STARTED__) return;
+
+        var message = root.querySelector("[data-startup-message]");
+        if (message) {
+          message.textContent = "Still loading. If this stays here, open the browser console and check for blocked JavaScript assets or deployment environment errors.";
+        }
+      }, 30000);
     })();
   </script>
 </head>
@@ -83,7 +89,7 @@
         <div style="max-width:420px;text-align:center;">
           <img src="/Ndunda_logo.png" alt="Ndunda" style="height:56px;width:auto;margin-bottom:18px;" />
           <h1 style="font-size:22px;margin:0 0 8px;">Loading Ndunda</h1>
-          <p style="font-size:14px;line-height:1.5;margin:0;color:#52645a;">
+          <p data-startup-message style="font-size:14px;line-height:1.5;margin:0;color:#52645a;">
             If this message stays here, the app bundle did not start. Refresh once, then check the deployment environment variables.
           </p>
         </div>
