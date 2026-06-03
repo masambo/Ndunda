@@ -23,6 +23,58 @@
   <meta name="twitter:title" content="Ndunda - Namibia Rental Marketplace">
   <meta property="og:description" content="Namibia&#39;s trusted rental marketplace for rooms and houses. Find your perfect space or list your property for free.">
   <meta name="twitter:description" content="Namibia&#39;s trusted rental marketplace for rooms and houses. Find your perfect space or list your property for free.">
+  <script>
+    (function () {
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function renderStartupError(title, detail) {
+        var root = document.getElementById("root");
+        if (!root || window.__NDUNDA_APP_STARTED__) return;
+
+        root.innerHTML =
+          '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;font-family:Inter,Arial,sans-serif;background:#f8faf9;color:#102018;">' +
+          '<div style="max-width:520px;text-align:center;border:1px solid #dbe7df;border-radius:12px;background:#fff;padding:24px;box-shadow:0 12px 30px rgba(16,32,24,0.08);">' +
+          '<img src="/Ndunda_logo.png" alt="Ndunda" style="height:56px;width:auto;margin-bottom:18px;" />' +
+          '<h1 style="font-size:22px;margin:0 0 8px;">' +
+          escapeHtml(title) +
+          '</h1><p style="font-size:14px;line-height:1.5;margin:0 0 14px;color:#52645a;">The page loaded, but the app bundle could not start.</p>' +
+          '<pre style="white-space:pre-wrap;text-align:left;background:#f1f5f2;border-radius:8px;padding:12px;font-size:12px;line-height:1.4;color:#1f3328;">' +
+          escapeHtml(detail) +
+          "</pre></div></div>";
+      }
+
+      window.addEventListener(
+        "error",
+        function (event) {
+          if (window.__NDUNDA_APP_STARTED__) return;
+
+          var target = event.target;
+          var tagName = target && target.tagName ? target.tagName.toLowerCase() : "";
+          if (tagName === "script" || tagName === "link") {
+            renderStartupError("Ndunda asset failed to load", target.src || target.href || "Unknown asset");
+            return;
+          }
+
+          renderStartupError("Ndunda could not start", event.message || "Unknown startup error");
+        },
+        true
+      );
+
+      window.addEventListener("unhandledrejection", function (event) {
+        renderStartupError("Ndunda could not start", event.reason && event.reason.message ? event.reason.message : event.reason || "Unknown startup error");
+      });
+
+      window.setTimeout(function () {
+        renderStartupError("Ndunda is still loading", "The JavaScript bundle did not finish mounting after 8 seconds. Hard-refresh the page once. If this repeats, check the browser console and Vercel environment variables.");
+      }, 8000);
+    })();
+  </script>
 </head>
 
   <body>

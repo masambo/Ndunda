@@ -41,6 +41,7 @@ try {
   }
 
   createRoot(root).render(<App />);
+  window.__NDUNDA_APP_STARTED__ = true;
 } catch (error) {
   renderBootError(error);
 }
