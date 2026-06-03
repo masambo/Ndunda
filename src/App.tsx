@@ -9,6 +9,7 @@ import { UserSync } from "@/components/auth/UserSync";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AppBootstrap } from "@/components/AppBootstrap";
+import { ThemeBootstrap } from "@/components/ThemeBootstrap";
 import Onboarding from "./pages/Onboarding";
 import SelectLanguage from "./pages/SelectLanguage";
 import ChooseCity from "./pages/ChooseCity";
@@ -29,6 +30,8 @@ import NotFound from "./pages/NotFound";
 import NearbyScan from "./pages/NearbyScan";
 import Admin from "./pages/Admin";
 import AgentDashboard from "./pages/AgentDashboard";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +46,7 @@ const App = () => (
       <LanguageProvider>
         <QueryClientProvider client={queryClient}>
           <UserSync />
+          <ThemeBootstrap />
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -60,6 +64,7 @@ const App = () => (
               <Route path="/agents/:id" element={<AgentView />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/add-listing" element={<AddListing />} />
+                <Route path="/edit-listing/:id" element={<AddListing />} />
                 <Route path="/my-listings" element={<MyListings />} />
                 <Route path="/agent-dashboard" element={<AgentDashboard />} />
                 <Route path="/admin" element={<Admin />} />
@@ -71,6 +76,8 @@ const App = () => (
               </Route>
               <Route path="/profile" element={<Profile />} />
               <Route path="/help" element={<Help />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
               <Route path="/nearby" element={<NearbyScan />} />
               <Route path="*" element={<NotFound />} />
                 </Routes>

@@ -115,9 +115,12 @@ const MyListings = () => {
                 </div>
                 {/* Action Buttons Overlay */}
                 <div className="absolute bottom-3 right-3 z-10 flex gap-2">
-                  <button className="p-2 bg-background/90 backdrop-blur-sm rounded-lg shadow-md hover:bg-background transition-colors">
+                  <Link
+                    to={`/edit-listing/${listing.id}`}
+                    className="p-2 bg-background/90 backdrop-blur-sm rounded-lg shadow-md hover:bg-background transition-colors"
+                  >
                     <Edit className="w-4 h-4 text-primary" />
-                  </button>
+                  </Link>
                   <button
                     onClick={() => void handleDelete(listing.id)}
                     className="p-2 bg-background/90 backdrop-blur-sm rounded-lg shadow-md hover:bg-background transition-colors"

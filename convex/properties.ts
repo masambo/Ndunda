@@ -408,6 +408,8 @@ export const create = mutation({
     bedrooms: v.number(),
     bathrooms: v.number(),
     size: v.optional(v.number()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     images: v.array(v.string()),
     dailyPrice: v.optional(v.number()),
     weeklyPrice: v.optional(v.number()),
@@ -426,7 +428,7 @@ export const create = mutation({
       throw new Error("Office Space is only available for rent listings.");
     }
     const now = Date.now();
-    return await ctx.db.insert("properties", {
+    const propertyId = await ctx.db.insert("properties", {
       ownerId: user._id,
       title: args.title,
       description: args.description,
@@ -439,6 +441,8 @@ export const create = mutation({
       bedrooms: args.bedrooms,
       bathrooms: args.bathrooms,
       size: args.size,
+      latitude: args.latitude,
+      longitude: args.longitude,
       images: args.images,
       verified: user.role === "agent" || user.role === "admin",
       recommended: false,
@@ -461,6 +465,86 @@ export const create = mutation({
       views: 0,
       createdAt: now,
       updatedAt: now,
+    });
+    await ctx.db.insert("notifications", {
+      userId: user._id,
+      type: "listing",
+      title: "Your listing is live",
+      description: `${args.title} is now published on Ndunda.`,
+      read: false,
+      createdAt: now,
+    });
+    return propertyId;
+  },
+});
+
+export const update = mutation({
+  args: {
+    id: v.id("properties"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    location: v.string(),
+    fullAddress: v.optional(v.string()),
+    type: propertyType,
+    listingMode,
+    rentalType,
+    price: v.number(),
+    bedrooms: v.number(),
+    bathrooms: v.number(),
+    size: v.optional(v.number()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    images: v.array(v.string()),
+    dailyPrice: v.optional(v.number()),
+    weeklyPrice: v.optional(v.number()),
+    monthlyPrice: v.optional(v.number()),
+    minimumStay: v.optional(v.number()),
+    maxGuests: v.optional(v.number()),
+    cleaningFee: v.optional(v.number()),
+    checkInTime: v.optional(v.string()),
+    checkOutTime: v.optional(v.string()),
+    instantBook: v.optional(v.boolean()),
+    cancellationPolicy: v.optional(v.union(v.literal("flexible"), v.literal("moderate"), v.literal("strict"))),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const property = await ctx.db.get(args.id);
+    if (!property) throw new Error("Property not found");
+    if (property.ownerId !== user._id && user.role !== "admin" && !isAdminEmail(user.email)) {
+      throw new Error("Unauthorized");
+    }
+    if (args.listingMode === "buy" && args.type === "office-space") {
+      throw new Error("Office Space is only available for rent listings.");
+    }
+
+    await ctx.db.patch(args.id, {
+      title: args.title,
+      description: args.description,
+      location: args.location,
+      fullAddress: args.fullAddress,
+      type: args.type,
+      listingMode: args.listingMode,
+      rentalType: args.rentalType,
+      price: args.price,
+      bedrooms: args.bedrooms,
+      bathrooms: args.bathrooms,
+      size: args.size,
+      latitude: args.latitude,
+      longitude: args.longitude,
+      images: args.images,
+      dailyPrice: args.dailyPrice,
+      weeklyPrice: args.weeklyPrice,
+      monthlyPrice: args.monthlyPrice,
+      minimumStay: args.minimumStay,
+      maxGuests: args.maxGuests,
+      cleaningFee: args.cleaningFee,
+      checkInTime: args.rentalType === "short-term" ? args.checkInTime : undefined,
+      checkOutTime: args.rentalType === "short-term" ? args.checkOutTime : undefined,
+      instantBook: args.rentalType === "short-term" ? (args.instantBook ?? false) : false,
+      cancellationPolicy: args.rentalType === "short-term" ? args.cancellationPolicy : undefined,
+      deposit: args.listingMode === "rent" && args.rentalType === "long-term" ? args.price : undefined,
+      leaseTerm: args.listingMode === "rent" && args.rentalType === "long-term" ? "12 months" : undefined,
+      updatedAt: Date.now(),
     });
   },
 });

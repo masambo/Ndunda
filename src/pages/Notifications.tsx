@@ -1,34 +1,9 @@
 import AppLayout from "@/components/layout/AppLayout";
-import { ArrowLeft, Bell, Home, BadgeCheck, Heart } from "lucide-react";
+import { ArrowLeft, Bell, Home, BadgeCheck, Heart, Calendar, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-
-const notifications = [
-  {
-    id: "2",
-    type: "listing",
-    title: "Your listing is live",
-    description: "Bachelor Flat is now visible to tenants",
-    time: "1 hour ago",
-    read: false,
-  },
-  {
-    id: "3",
-    type: "saved",
-    title: "Price drop alert",
-    description: "A property you saved reduced its price",
-    time: "3 hours ago",
-    read: true,
-  },
-  {
-    id: "4",
-    type: "agent",
-    title: "Agent application update",
-    description: "Your application is under review",
-    time: "Yesterday",
-    read: true,
-  },
-];
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 const getIcon = (type: string) => {
   switch (type) {
@@ -38,6 +13,10 @@ const getIcon = (type: string) => {
       return Heart;
     case "agent":
       return BadgeCheck;
+    case "viewing":
+      return Calendar;
+    case "booking":
+      return Clock;
     default:
       return Bell;
   }
@@ -51,12 +30,21 @@ const getIconColor = (type: string) => {
       return "bg-destructive/10 text-destructive";
     case "agent":
       return "bg-warning/10 text-warning";
+    case "viewing":
+      return "bg-info/10 text-info";
+    case "booking":
+      return "bg-primary/10 text-primary";
     default:
       return "bg-muted text-muted-foreground";
   }
 };
 
 const Notifications = () => {
+  const notifications = useQuery(api.notifications.list, { limit: 50 });
+  const markAllRead = useMutation(api.notifications.markAllRead);
+  const loading = notifications === undefined;
+  const unread = (notifications ?? []).filter((notification) => !notification.read).length;
+
   return (
     <AppLayout>
       <div className="px-4 pt-4 pb-6">
@@ -73,14 +61,24 @@ const Notifications = () => {
             <div>
               <h1 className="text-xl font-bold text-foreground">Notifications</h1>
               <p className="text-sm text-muted-foreground">
-                {notifications.filter(n => !n.read).length} unread
+                {unread} unread
               </p>
             </div>
           </div>
-          <button className="text-sm text-primary font-medium">Mark all read</button>
+          <button
+            className="text-sm text-primary font-medium disabled:opacity-50"
+            disabled={loading || unread === 0}
+            onClick={() => void markAllRead({})}
+          >
+            Mark all read
+          </button>
         </div>
 
-        {notifications.length === 0 ? (
+        {loading ? (
+          <div className="grid min-h-48 place-items-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="text-center py-12">
             <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="font-semibold text-foreground mb-2">No notifications</h3>
@@ -92,9 +90,8 @@ const Notifications = () => {
           <div className="space-y-2">
             {notifications.map((notification) => {
               const Icon = getIcon(notification.type);
-              return (
+              const content = (
                 <div
-                  key={notification.id}
                   className={cn(
                     "flex items-start gap-3 p-4 rounded-xl transition-colors",
                     notification.read ? "bg-card" : "bg-primary/5"
@@ -122,10 +119,17 @@ const Notifications = () => {
                       {notification.description}
                     </p>
                     <span className="text-xs text-muted-foreground mt-1 block">
-                      {notification.time}
+                      {new Date(notification.createdAt).toLocaleString()}
                     </span>
                   </div>
                 </div>
+              );
+              return notification.path ? (
+                <Link key={notification._id} to={notification.path}>
+                  {content}
+                </Link>
+              ) : (
+                <div key={notification._id}>{content}</div>
               );
             })}
           </div>

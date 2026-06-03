@@ -6,6 +6,11 @@ import { Users, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
 import BookingCalendar from "./BookingCalendar";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useAuth } from "@clerk/react";
+import { useNavigate } from "react-router-dom";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 interface BookingWidgetProps {
   property: {
@@ -24,7 +29,7 @@ interface BookingWidgetProps {
       startDate: string;
       endDate: string;
       blockedDates?: string[];
-    };
+    } | null;
     rentalType: "long-term" | "short-term";
     instantBook?: boolean;
     cancellationPolicy?: "flexible" | "moderate" | "strict";
@@ -34,6 +39,9 @@ interface BookingWidgetProps {
 }
 
 const BookingWidget = ({ property }: BookingWidgetProps) => {
+  const navigate = useNavigate();
+  const { isSignedIn } = useAuth();
+  const createBooking = useMutation(api.bookings.create);
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);
   const [guests, setGuests] = useState(1);
@@ -63,7 +71,18 @@ const BookingWidget = ({ property }: BookingWidgetProps) => {
   const serviceFee = subtotal * 0.1; // 10% service fee
   const total = subtotal + cleaningFee + serviceFee;
 
+  const defaultAvailability = {
+    startDate: new Date().toISOString(),
+    endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+    blockedDates: [],
+  };
+  const availability = property.availability ?? defaultAvailability;
+
   const handleBooking = async () => {
+    if (!isSignedIn) {
+      navigate("/login");
+      return;
+    }
     if (!checkIn || !checkOut) {
       toast.error("Please select check-in and check-out dates");
       return;
@@ -78,27 +97,30 @@ const BookingWidget = ({ property }: BookingWidgetProps) => {
     }
 
     setIsBooking(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await createBooking({
+        propertyId: property.id as Id<"properties">,
+        checkIn: checkIn.toISOString(),
+        checkOut: checkOut.toISOString(),
+        guests,
+        nights,
+        subtotal,
+        cleaningFee,
+        serviceFee,
+        total,
+      });
       setIsBooking(false);
       toast.success(property.instantBook 
         ? "Booking confirmed! Check your email for details."
         : "Booking request sent! The host will confirm shortly.");
-    }, 2000);
+    } catch (error) {
+      setIsBooking(false);
+      toast.error(error instanceof Error ? error.message : "Could not submit booking request");
+    }
   };
 
   if (property.rentalType === "long-term") {
     return null; // Don't show booking widget for long-term rentals
-  }
-
-  if (!property.availability) {
-    return (
-      <div className="bg-card rounded-xl p-6 border border-border">
-        <p className="text-sm text-muted-foreground text-center">
-          Availability information not available. Please contact the host.
-        </p>
-      </div>
-    );
   }
 
   return (
@@ -118,7 +140,7 @@ const BookingWidget = ({ property }: BookingWidgetProps) => {
         </div>
 
         <BookingCalendar
-          availability={property.availability}
+          availability={availability}
           onDateSelect={(checkInDate, checkOutDate) => {
             setCheckIn(checkInDate);
             setCheckOut(checkOutDate);

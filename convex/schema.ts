@@ -66,6 +66,8 @@ export default defineSchema({
     bedrooms: v.number(),
     bathrooms: v.number(),
     size: v.optional(v.number()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     images: v.array(v.string()),
     verified: v.boolean(),
     recommended: v.optional(v.boolean()),
@@ -110,4 +112,76 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_property", ["userId", "propertyId"]),
+  viewingRequests: defineTable({
+    propertyId: v.id("properties"),
+    ownerId: v.id("users"),
+    requesterId: v.optional(v.id("users")),
+    name: v.string(),
+    email: v.string(),
+    phone: v.string(),
+    notes: v.optional(v.string()),
+    requestedDate: v.string(),
+    requestedTime: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("declined"),
+      v.literal("completed"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_property", ["propertyId"])
+    .index("by_owner", ["ownerId"])
+    .index("by_requester", ["requesterId"]),
+  bookings: defineTable({
+    propertyId: v.id("properties"),
+    ownerId: v.id("users"),
+    requesterId: v.id("users"),
+    checkIn: v.string(),
+    checkOut: v.string(),
+    guests: v.number(),
+    nights: v.number(),
+    subtotal: v.number(),
+    cleaningFee: v.number(),
+    serviceFee: v.number(),
+    total: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("declined"),
+      v.literal("cancelled"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_property", ["propertyId"])
+    .index("by_owner", ["ownerId"])
+    .index("by_requester", ["requesterId"]),
+  reviews: defineTable({
+    propertyId: v.id("properties"),
+    userId: v.id("users"),
+    rating: v.number(),
+    comment: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_property", ["propertyId"])
+    .index("by_user_property", ["userId", "propertyId"]),
+  notifications: defineTable({
+    userId: v.id("users"),
+    type: v.union(
+      v.literal("listing"),
+      v.literal("saved"),
+      v.literal("agent"),
+      v.literal("viewing"),
+      v.literal("booking"),
+      v.literal("system"),
+    ),
+    title: v.string(),
+    description: v.string(),
+    path: v.optional(v.string()),
+    read: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
 });

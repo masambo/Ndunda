@@ -4,6 +4,10 @@
 
 Ndunda is a rental marketplace platform for Namibia, connecting tenants with property owners and verified agents. Find rooms, apartments, and houses for rent, or list your property for free.
 
+## App Documentation
+
+See [APP_DOCUMENTATION.md](APP_DOCUMENTATION.md) for the full product, design, architecture, and feature documentation.
+
 ## Development Setup
 
 **Use your preferred IDE**

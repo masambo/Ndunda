@@ -1,14 +1,16 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, MapPin, DollarSign, Bed, Bath, Square, Info } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@clerk/react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Property } from "@/types/property";
+import { useProperty } from "@/hooks/useProperties";
+import type { Id } from "../../convex/_generated/dataModel";
 
 const propertyTypes = [
   { id: "house", label: "House", image: "/Houses.png", category: "long-term", modes: ["buy", "rent"] },
@@ -74,14 +76,18 @@ function resizeListingImage(file: File) {
 }
 
 function getPropertyTypeOption(typeId: string, listingMode: "buy" | "rent"): PropertyTypeOption | undefined {
-  return propertyTypes.find((type) => type.id === typeId && type.modes.includes(listingMode));
+  return propertyTypes.find((type) => type.id === typeId && (type.modes as readonly string[]).includes(listingMode));
 }
 
 const AddListing = () => {
   const navigate = useNavigate();
+  const { id: editId } = useParams<{ id: string }>();
+  const isEditMode = Boolean(editId);
   const { isLoaded, isSignedIn } = useAuth();
   const createProperty = useMutation(api.properties.create);
+  const updateProperty = useMutation(api.properties.update);
   const generateUploadUrl = useMutation(api.properties.generateUploadUrl);
+  const { property: editingProperty, loading: editingLoading } = useProperty(editId);
   const [listingMode, setListingMode] = useState<"buy" | "rent">("rent");
   const [selectedType, setSelectedType] = useState("");
   const [rentalType, setRentalType] = useState<"long-term" | "short-term">("long-term");
@@ -94,6 +100,8 @@ const AddListing = () => {
     bedrooms: "",
     bathrooms: "",
     size: "",
+    latitude: "",
+    longitude: "",
     description: "",
   });
   const [shortTermData, setShortTermData] = useState({
@@ -110,6 +118,38 @@ const AddListing = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+
+  useEffect(() => {
+    if (!editingProperty) return;
+    setListingMode(editingProperty.listing_mode);
+    setSelectedType(editingProperty.type);
+    setRentalType(editingProperty.rental_type);
+    setImages(editingProperty.images);
+    setImagePreviews(editingProperty.images);
+    setFormData({
+      title: editingProperty.title,
+      location: editingProperty.location,
+      price: String(editingProperty.price),
+      bedrooms: String(editingProperty.bedrooms),
+      bathrooms: String(editingProperty.bathrooms),
+      size: editingProperty.size ? String(editingProperty.size) : "",
+      latitude: editingProperty.latitude !== null ? String(editingProperty.latitude) : "",
+      longitude: editingProperty.longitude !== null ? String(editingProperty.longitude) : "",
+      description: editingProperty.description ?? "",
+    });
+    setShortTermData({
+      dailyPrice: editingProperty.daily_price ? String(editingProperty.daily_price) : "",
+      weeklyPrice: editingProperty.weekly_price ? String(editingProperty.weekly_price) : "",
+      monthlyPrice: editingProperty.monthly_price ? String(editingProperty.monthly_price) : "",
+      minimumStay: editingProperty.minimum_stay ? String(editingProperty.minimum_stay) : "1",
+      maxGuests: editingProperty.max_guests ? String(editingProperty.max_guests) : "",
+      cleaningFee: editingProperty.cleaning_fee ? String(editingProperty.cleaning_fee) : "",
+      checkInTime: editingProperty.check_in_time ?? "14:00",
+      checkOutTime: editingProperty.check_out_time ?? "11:00",
+      instantBook: editingProperty.instant_book,
+      cancellationPolicy: editingProperty.cancellation_policy ?? "moderate",
+    });
+  }, [editingProperty]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -214,18 +254,24 @@ const AddListing = () => {
       toast.error("Please choose a property category");
       return;
     }
+    const latitude = formData.latitude.trim() ? Number(formData.latitude) : undefined;
+    const longitude = formData.longitude.trim() ? Number(formData.longitude) : undefined;
+    if ((latitude !== undefined && !Number.isFinite(latitude)) || (longitude !== undefined && !Number.isFinite(longitude))) {
+      toast.error("Please enter valid latitude and longitude values");
+      return;
+    }
 
     setIsSubmitting(true);
     
     try {
       if (!isLoaded || !isSignedIn) {
-        toast.error("Please sign in before publishing a listing");
+        toast.error(`Please sign in before ${isEditMode ? "saving" : "publishing"} a listing`);
         setIsSubmitting(false);
         navigate("/login");
         return;
       }
 
-      await createProperty({
+      const payload = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         location: formData.location.trim(),
@@ -240,6 +286,8 @@ const AddListing = () => {
         bedrooms: parseInt(formData.bedrooms || "0", 10),
         bathrooms: parseInt(formData.bathrooms || "0", 10),
         size: parseInt(formData.size || "0", 10) || undefined,
+        latitude,
+        longitude,
         images,
         dailyPrice: shortTermData.dailyPrice ? parseFloat(shortTermData.dailyPrice) : undefined,
         weeklyPrice: shortTermData.weeklyPrice ? parseFloat(shortTermData.weeklyPrice) : undefined,
@@ -251,10 +299,19 @@ const AddListing = () => {
         checkOutTime: rentalType === "short-term" ? shortTermData.checkOutTime : undefined,
         instantBook: rentalType === "short-term" ? shortTermData.instantBook : false,
         cancellationPolicy: rentalType === "short-term" ? shortTermData.cancellationPolicy : undefined,
-      });
+      };
+
+      if (isEditMode && editId) {
+        await updateProperty({
+          id: editId as Id<"properties">,
+          ...payload,
+        });
+      } else {
+        await createProperty(payload);
+      }
 
       setIsSubmitting(false);
-      toast.success("Listing published successfully");
+      toast.success(isEditMode ? "Listing updated successfully" : "Listing published successfully");
       // Reset form
       setFormData({
         title: "",
@@ -263,6 +320,8 @@ const AddListing = () => {
         bedrooms: "",
         bathrooms: "",
         size: "",
+        latitude: "",
+        longitude: "",
         description: "",
       });
       setImages([]);
@@ -280,10 +339,17 @@ const AddListing = () => {
   return (
     <AppLayout>
       <div className="px-4 pt-4 pb-6">
-        <h1 className="text-xl font-semibold text-foreground mb-1">Add Listing</h1>
+        <h1 className="text-xl font-semibold text-foreground mb-1">
+          {isEditMode ? "Edit Listing" : "Add Listing"}
+        </h1>
         <p className="text-sm text-muted-foreground mb-6">
-          List your property for free
+          {isEditMode ? "Update your property details" : "List your property for free"}
         </p>
+        {editingLoading && isEditMode && (
+          <div className="mb-4 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+            Loading listing details...
+          </div>
+        )}
 
         <div className="mb-6">
           <label className="text-sm font-semibold text-foreground mb-3 block">
@@ -332,7 +398,7 @@ const AddListing = () => {
           )}
           <div className="grid grid-cols-3 gap-3">
             {propertyTypes
-              .filter((type) => type.modes.includes(listingMode))
+              .filter((type) => (type.modes as readonly string[]).includes(listingMode))
               .map((type, index) => {
               return (
                 <button
@@ -444,6 +510,35 @@ const AddListing = () => {
               onChange={(e) => handleInputChange("location", e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
               required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="text-xs font-semibold text-foreground mb-2 block">
+              Latitude
+            </label>
+            <input
+              type="number"
+              step="any"
+              placeholder="-22.5609"
+              value={formData.latitude}
+              onChange={(e) => handleInputChange("latitude", e.target.value)}
+              className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-foreground mb-2 block">
+              Longitude
+            </label>
+            <input
+              type="number"
+              step="any"
+              placeholder="17.0658"
+              value={formData.longitude}
+              onChange={(e) => handleInputChange("longitude", e.target.value)}
+              className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
         </div>
@@ -721,7 +816,11 @@ const AddListing = () => {
             className="w-full"
             disabled={isSubmitting || isUploadingImages || !getPropertyTypeOption(selectedType, listingMode)}
           >
-            {isSubmitting ? "Publishing..." : selectedType ? "Publish Listing" : "Choose Category to Publish"}
+            {isSubmitting
+              ? isEditMode ? "Saving..." : "Publishing..."
+              : selectedType
+                ? isEditMode ? "Save Changes" : "Publish Listing"
+                : "Choose Category to Publish"}
           </Button>
         </form>
       </div>

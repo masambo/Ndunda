@@ -306,6 +306,7 @@ export const applyAsAgent = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
+    const now = Date.now();
     await ctx.db.patch(user._id, {
       fullName: args.fullName,
       phone: args.phone,
@@ -321,8 +322,17 @@ export const applyAsAgent = mutation({
       taxCertificateUrl: args.taxCertificateUrl,
       taxCertificateName: args.taxCertificateName,
       agentStatus: "pending",
-      agentAppliedAt: Date.now(),
-      updatedAt: Date.now(),
+      agentAppliedAt: now,
+      updatedAt: now,
+    });
+    await ctx.db.insert("notifications", {
+      userId: user._id,
+      type: "agent",
+      title: "Agent application submitted",
+      description: "Your application is under review by the Ndunda admin team.",
+      path: "/profile",
+      read: false,
+      createdAt: now,
     });
     return user._id;
   },
@@ -332,11 +342,21 @@ export const approveAgent = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    const now = Date.now();
     await ctx.db.patch(args.userId, {
       role: "agent",
       agentStatus: "approved",
-      agentReviewedAt: Date.now(),
-      updatedAt: Date.now(),
+      agentReviewedAt: now,
+      updatedAt: now,
+    });
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      type: "agent",
+      title: "Agent application approved",
+      description: "You can now access verified agent tools and publish verified listings.",
+      path: "/agent-dashboard",
+      read: false,
+      createdAt: now,
     });
   },
 });
@@ -345,10 +365,20 @@ export const rejectAgent = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    const now = Date.now();
     await ctx.db.patch(args.userId, {
       agentStatus: "rejected",
-      agentReviewedAt: Date.now(),
-      updatedAt: Date.now(),
+      agentReviewedAt: now,
+      updatedAt: now,
+    });
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      type: "agent",
+      title: "Agent application update",
+      description: "Your application was reviewed. Please contact support for details.",
+      path: "/profile",
+      read: false,
+      createdAt: now,
     });
   },
 });

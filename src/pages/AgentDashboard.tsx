@@ -29,6 +29,10 @@ const AgentDashboard = () => {
     api.properties.mine,
     convexAuth.isAuthenticated ? {} : "skip",
   );
+  const leadStats = useQuery(
+    api.bookings.leadStats,
+    convexAuth.isAuthenticated ? {} : "skip",
+  );
 
   const listings = useMemo(
     () =>
@@ -144,7 +148,7 @@ const AgentDashboard = () => {
           <StatCard icon={Home} label="Active Listings" value={activeListings} />
           <StatCard icon={Clock} label="Pending Listings" value={pendingListings} />
           <StatCard icon={Eye} label="Total Views" value={totalViews} />
-          <StatCard icon={MessageCircle} label="New Leads" value={0} />
+          <StatCard icon={MessageCircle} label="New Leads" value={leadStats?.newLeads ?? 0} />
         </section>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
@@ -194,7 +198,7 @@ const AgentDashboard = () => {
               <ActionCard
                 icon={MessageCircle}
                 title="WhatsApp Leads"
-                description="Client WhatsApp tracking will appear here once inquiry tracking is enabled."
+                description={`${leadStats?.viewings ?? 0} viewing requests are stored from property pages.`}
               />
               <ActionCard
                 icon={Phone}
@@ -204,7 +208,7 @@ const AgentDashboard = () => {
               <ActionCard
                 icon={BarChart3}
                 title="Performance"
-                description="Views are connected now; lead conversion metrics can be added next."
+                description={`${leadStats?.bookings ?? 0} booking requests are stored for short-term listings.`}
               />
             </section>
           </main>

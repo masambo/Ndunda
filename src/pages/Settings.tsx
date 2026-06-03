@@ -14,14 +14,16 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { languages } from "@/i18n";
+import { THEME_STORAGE_KEY, applyStoredTheme } from "@/components/ThemeBootstrap";
 
 const Settings = () => {
   const { t, language } = useLanguage();
   const languageLabel = languages.find((l) => l.code === language)?.nativeLabel ?? "English";
+  const darkModeEnabled = localStorage.getItem(THEME_STORAGE_KEY) === "dark";
 
   const [toggles, setToggles] = useState<Record<string, boolean>>({
     Notifications: true,
-    "Dark Mode": false,
+    "Dark Mode": darkModeEnabled,
   });
 
   const settingsGroups = [
@@ -44,7 +46,14 @@ const Settings = () => {
   ];
 
   const handleToggle = (label: string) => {
-    setToggles((prev) => ({ ...prev, [label]: !prev[label] }));
+    setToggles((prev) => {
+      const nextValue = !prev[label];
+      if (label === "Dark Mode") {
+        localStorage.setItem(THEME_STORAGE_KEY, nextValue ? "dark" : "light");
+        applyStoredTheme();
+      }
+      return { ...prev, [label]: nextValue };
+    });
   };
 
   return (

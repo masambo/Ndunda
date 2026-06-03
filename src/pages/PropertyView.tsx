@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import {
@@ -99,12 +99,20 @@ const PropertyView = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
 
   const propertyId = id || "";
   const { property: syncedProperty, loading: propertyLoading } = useProperty(propertyId);
   const { isSignedIn } = useAuth();
   const savedProperties = useQuery(api.properties.saved);
+  const persistedReviews = useQuery(
+    api.reviews.listForProperty,
+    propertyId ? { propertyId: propertyId as Id<"properties"> } : "skip",
+  );
   const toggleSaved = useMutation(api.properties.toggleSaved);
+  const createViewingRequest = useMutation(api.viewingRequests.create);
+  const createReview = useMutation(api.reviews.createOrUpdate);
   const property = syncedProperty ? {
     id: syncedProperty.id,
     title: syncedProperty.title,
@@ -157,14 +165,18 @@ const PropertyView = () => {
   // Get similar properties (excluding current property)
   const similarProperties: any[] = [];
   
-  const reviews: Array<{
-    id: string;
-    user: string;
-    rating: number;
-    date: string;
-    comment: string;
-    verified: boolean;
-  }> = [];
+  const reviews = useMemo(
+    () =>
+      (persistedReviews ?? []).map((review) => ({
+        id: review._id,
+        user: review.user?.fullName || review.user?.email || "Ndunda user",
+        rating: review.rating,
+        date: new Date(review.createdAt).toISOString(),
+        comment: review.comment,
+        verified: review.user?.role === "agent" || review.user?.role === "admin",
+      })),
+    [persistedReviews],
+  );
   
   const averageRating = reviews.length > 0
     ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
@@ -273,20 +285,55 @@ const PropertyView = () => {
     setScheduleOpen(true);
   };
 
-  const handleSubmitSchedule = () => {
+  const handleSubmitSchedule = async () => {
     if (!selectedDate || !selectedTime || !name || !email || !phone) {
       toast.error("Please fill in all required fields");
       return;
     }
-    // In real app, submit to API
-    toast.success(`Viewing scheduled for ${format(selectedDate, "PPP")} at ${selectedTime}`);
-    setScheduleOpen(false);
-    setSelectedDate(undefined);
-    setSelectedTime("");
-    setName("");
-    setEmail("");
-    setPhone("");
-    setNotes("");
+    try {
+      await createViewingRequest({
+        propertyId: propertyId as Id<"properties">,
+        name,
+        email,
+        phone,
+        notes: notes.trim() || undefined,
+        requestedDate: selectedDate.toISOString(),
+        requestedTime: selectedTime,
+      });
+      toast.success(`Viewing request sent for ${format(selectedDate, "PPP")} at ${selectedTime}`);
+      setScheduleOpen(false);
+      setSelectedDate(undefined);
+      setSelectedTime("");
+      setName("");
+      setEmail("");
+      setPhone("");
+      setNotes("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not send viewing request");
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!isSignedIn) {
+      navigate("/login");
+      return;
+    }
+    if (!reviewComment.trim()) {
+      toast.error("Please write a review comment");
+      return;
+    }
+    try {
+      await createReview({
+        propertyId: propertyId as Id<"properties">,
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      });
+      toast.success("Review saved");
+      setReviewRating(5);
+      setReviewComment("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save review");
+    }
   };
 
   const availableTimeSlots = [
@@ -294,9 +341,15 @@ const PropertyView = () => {
     "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
   ];
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
-  const streetViewLocation = property.latitude && property.longitude
+  const hasCoordinates = property.latitude !== null && property.longitude !== null;
+  const mapQuery = hasCoordinates
     ? `${property.latitude},${property.longitude}`
-    : encodeURIComponent(property.fullAddress || property.location);
+    : property.fullAddress || property.location;
+  const encodedMapQuery = encodeURIComponent(mapQuery);
+  const streetViewEmbedLocation = encodedMapQuery;
+  const streetViewUrl = hasCoordinates
+    ? `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodedMapQuery}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodedMapQuery}`;
 
   const handleImageThumbnailClick = (index: number) => {
     carouselApi?.scrollTo(index);
@@ -774,32 +827,42 @@ const PropertyView = () => {
                   loading="lazy"
                   allowFullScreen
                   referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://www.google.com/maps/embed/v1/streetview?key=${googleMapsApiKey}&location=${streetViewLocation}&heading=210&pitch=0&fov=90`}
+                  src={`https://www.google.com/maps/embed/v1/streetview?key=${googleMapsApiKey}&location=${streetViewEmbedLocation}&heading=210&pitch=0&fov=90`}
                   title="Property Street View"
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-muted/95 backdrop-blur-sm">
                   <div className="text-center">
-                    <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                    <Camera className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground mb-2">Street View</p>
-                    <p className="text-xs text-muted-foreground">Add VITE_GOOGLE_MAPS_API_KEY to enable Street View</p>
+                    <p className="text-xs text-muted-foreground">Add VITE_GOOGLE_MAPS_API_KEY to embed Street View here</p>
                   </div>
                 </div>
               )}
             </div>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                window.open(
-                  `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(property.fullAddress)}`,
-                  "_blank"
-                );
-              }}
-            >
-              <MapPin className="w-4 h-4 mr-2" />
-              Get Directions
-            </Button>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => window.open(streetViewUrl, "_blank")}
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                {hasCoordinates ? "Open Street View" : "Open in Google Maps"}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  window.open(
+                    `https://www.google.com/maps/dir/?api=1&destination=${encodedMapQuery}`,
+                    "_blank"
+                  );
+                }}
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                Get Directions
+              </Button>
+            </div>
           </TabsContent>
           <TabsContent value="reviews" className="mt-4">
             {/* Reviews Summary */}
@@ -850,9 +913,58 @@ const PropertyView = () => {
               </div>
             </div>
 
+            <div className="bg-card rounded-lg p-4 border border-border mb-4">
+              <h3 className="font-semibold text-foreground mb-3">Write a Review</h3>
+              <div className="space-y-3">
+                <div>
+                  <Label>Rating</Label>
+                  <div className="mt-2 flex gap-1">
+                    {[1, 2, 3, 4, 5].map((rating) => (
+                      <button
+                        key={rating}
+                        type="button"
+                        onClick={() => setReviewRating(rating)}
+                        className="rounded-md p-1"
+                        aria-label={`${rating} star review`}
+                      >
+                        <Star
+                          className={cn(
+                            "h-6 w-6",
+                            rating <= reviewRating
+                              ? "fill-current text-yellow-500"
+                              : "text-muted-foreground",
+                          )}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="review-comment">Comment</Label>
+                  <Textarea
+                    id="review-comment"
+                    value={reviewComment}
+                    onChange={(event) => setReviewComment(event.target.value)}
+                    placeholder="Share your experience with this listing..."
+                    rows={3}
+                    className="mt-2"
+                  />
+                </div>
+                <Button onClick={handleSubmitReview}>
+                  {isSignedIn ? "Save Review" : "Sign in to Review"}
+                </Button>
+              </div>
+            </div>
+
             {/* Reviews List */}
             <div className="space-y-4">
-              {reviews.map((review) => (
+              {reviews.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border p-6 text-center">
+                  <Star className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-2 font-semibold text-foreground">No reviews yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Be the first to review this property.</p>
+                </div>
+              ) : reviews.map((review) => (
                 <div
                   key={review.id}
                   className="bg-card rounded-lg p-4 border border-border"
