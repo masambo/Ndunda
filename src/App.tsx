@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AppBootstrap } from "@/components/AppBootstrap";
 import { ThemeBootstrap } from "@/components/ThemeBootstrap";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import Onboarding from "./pages/Onboarding";
 import SelectLanguage from "./pages/SelectLanguage";
 import ChooseCity from "./pages/ChooseCity";
@@ -50,6 +51,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <PwaInstallPrompt />
             <BrowserRouter>
               <AppBootstrap>
                 <Routes>

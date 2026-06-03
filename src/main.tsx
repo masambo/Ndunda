@@ -4,6 +4,14 @@ import "./index.css";
 
 const root = document.getElementById("root");
 
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.warn("Ndunda service worker registration failed.", error);
+    });
+  });
+}
+
 function renderBootError(error: unknown) {
   const message = error instanceof Error ? error.message : "Unknown startup error";
   if (!root) return;
